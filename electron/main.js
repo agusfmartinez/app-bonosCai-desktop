@@ -1,26 +1,32 @@
-const { app, BrowserWindow, ipcMain } = require('electron')
-const path = require('path')
+const { app, BrowserWindow, ipcMain } = require("electron");
+const path = require("path");
+const Runner = require("./runner/Runner");
+
+let win;
+let runner;
 
 function createWindow() {
-  const win = new BrowserWindow({
+  win = new BrowserWindow({
     width: 1200,
     height: 800,
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js')
-    }
-  })
+      preload: path.join(__dirname, "preload.js"),
+    },
+  });
 
-  win.loadURL('http://localhost:5173')
+  runner = new Runner((log) => {
+    win.webContents.send("runner:log", log);
+  });
+
+  win.loadURL("http://localhost:5173");
 }
 
-app.whenReady().then(createWindow)
+ipcMain.handle("runner:run", async (_, config) => {
+  return await runner.run(config);
+});
 
-const runner = require('./runner/Runner')
+ipcMain.handle("runner:stop", async () => {
+  return await runner.stop();
+});
 
-ipcMain.handle('runner:run', async (_, config) => {
-  return await runner.run(config)
-})
-
-ipcMain.handle('runner:stop', async () => {
-  return await runner.stop()
-})
+app.whenReady().then(createWindow);

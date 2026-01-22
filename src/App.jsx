@@ -1,7 +1,24 @@
+import { useEffect } from 'react'
+
 function App() {
+
+  useEffect(() => {
+  window.api.onLog((log) => {
+    console.log(log);
+  });
+}, []);
+
+
   const run = async () => {
-    const res = await window.api.run({ test: true })
-    console.log(res)
+    await window.api.run({
+    url: "https://example.com",
+    sector: "52784",
+    sectorName: "PAVONI ALTA",
+    cantidad: 1,
+    personas: [{ socio: "123", dni: "12345678" }],
+    horaHabilitacion: "18:00:00",
+    simulateLocal: true,
+  });
   }
 
   return <button onClick={run}>Probar IPC</button>
