@@ -1,4 +1,4 @@
-import { StrictMode, useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { createRoot } from "react-dom/client";
 import {
   BrowserRouter,
@@ -166,9 +166,7 @@ function Root() {
 }
 
 createRoot(document.getElementById("root")).render(
-  <StrictMode>
-    <BrowserRouter>
-      <Root />
-    </BrowserRouter>
-  </StrictMode>
+  <BrowserRouter>
+    <Root />
+  </BrowserRouter>
 );

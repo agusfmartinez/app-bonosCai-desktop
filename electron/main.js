@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain } = require("electron");
 const path = require("path");
 const Runner = require("./runner/Runner");
+const { registerConfigIpc } = require('./ipc/config.ipc')
 
 let win;
 let runner;
@@ -29,4 +30,9 @@ ipcMain.handle("runner:stop", async () => {
   return await runner.stop();
 });
 
-app.whenReady().then(createWindow);
+// app.whenReady().then(createWindow);
+
+app.whenReady().then(() => {
+  createWindow()
+  registerConfigIpc()
+})
