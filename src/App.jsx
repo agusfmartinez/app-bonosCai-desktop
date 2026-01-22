@@ -1,27 +1,417 @@
-import { useEffect } from 'react'
+import React, { useEffect, useRef, useState } from "react";
+import PersonasForm from "./components/PersonasForm.jsx";
+import Controls from "./components/Controls.jsx";
+import LogsViewer from "./components/LogsViewer.jsx";
+import LoginBox from "./components/LoginBox.jsx";
+import { cardClass, inputClass, baseButtonClass, loginButtonClass } from "./styles/classes";
+import { fetchWithAuth } from "./lib/api";
 
-function App() {
+import { supabase } from "./lib/supabase";
+import { clearSession } from "./lib/session";
 
+
+const SECTORES = [
+  { value: "52784", label: "PAVONI ALTA" },
+  { value: "52074", label: "PAVONI BAJA" },
+  { value: "52107", label: "SANTORO BAJA" },
+];
+
+const EMPTY_CONFIG = {
+  url: "",
+  sector: "",
+  sectorName: "",
+  cantidad: 1,
+  horaHabilitacion: "",
+  personas: [{ socio: "", dni: "" }],
+};
+
+const normalizeConfig = (cfg) => {
+  if (!cfg) return null;
+  const validValues = new Set(SECTORES.map((s) => s.value));
+  const sector = validValues.has(cfg.sector) ? cfg.sector : "";
+  const found = SECTORES.find((s) => s.value === sector);
+
+  return {
+    url: cfg.url || "",
+    sector,
+    sectorName: found ? found.label : "",
+    cantidad: Number(cfg.cantidad) || 1,
+    horaHabilitacion: cfg.horaHabilitacion || "",
+    personas: Array.isArray(cfg.personas) && cfg.personas.length
+      ? cfg.personas
+      : [{ socio: "", dni: "" }],
+  };
+};
+
+export default function App() {
+  const [isLogged, setIsLogged] = useState(false);
+  const [running, setRunning] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [logs, setLogs] = useState([]);
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
+  const [config, setConfig] = useState(() => EMPTY_CONFIG);
+
+
+  // Carga inicial
   useEffect(() => {
-  window.api.onLog((log) => {
-    console.log(log);
-  });
-}, []);
+    let cancelled = false;
+
+    const loadConfig = async () => {
+      try {
+        const saved = localStorage.getItem("bonosConfig");
+        if (saved) {
+          console.log("bonosConfig desde localStorage", saved)
+          const parsed = normalizeConfig(JSON.parse(saved));
+          if (parsed && !cancelled) setConfig(parsed);
+          return;
+        }
+
+        const res = await fetchWithAuth("/api/user/config");
+        if (!res.ok) return;
+        const data = await res.json();
+        console.log("bonosConfig desde Supabase", data)
+
+        if (data?.last_config) {
+          const parsed = normalizeConfig(data.last_config);
+          if (parsed && !cancelled) {
+            setConfig(parsed);
+            localStorage.setItem("bonosConfig", JSON.stringify(parsed));
+          }
+        }
+      } catch {
+        // silencioso
+      }
+    };
+
+    loadConfig();
+    return () => { cancelled = true; };
+  }, []);
+
+  // SSE 
+  useEffect(() => {
+    window.api.onLog((log) => {
+      setLogs((prev) => [...prev, log]);
+    });
+  }, []);
+
+  const guardarConfig = async () => {
+    try {
+      const res = await fetchWithAuth("/api/user/config", {
+        method: "POST",
+        body: JSON.stringify({ lastConfig: config }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        console.error("saveConfig error:", res.status, err);
+        return;
+      }
+
+      localStorage.setItem("bonosConfig", JSON.stringify(config));
+      setEditMode(false);
+    } catch {
+      setLogs((prev) => [
+        ...prev,
+        { level: "error", message: "No se pudo guardar la configuracion." },
+      ]);
+    }
+  };
 
 
-  const run = async () => {
-    await window.api.run({
-    url: "https://example.com",
-    sector: "52784",
-    sectorName: "PAVONI ALTA",
-    cantidad: 1,
-    personas: [{ socio: "123", dni: "12345678" }],
-    horaHabilitacion: "18:00:00",
-    simulateLocal: true,
-  });
-  }
+  const handleLogin = async () => {
+    setLogs((prev) => [
+      ...prev,
+      { level: "info", message: "Abriendo login..." },
+    ]);
+    try {
+      const res = await fetchWithAuth("/api/login", {
+        method: "POST",
+        body: JSON.stringify({ email, password }),
+      });
+      if (!res.ok) throw new Error("Fallo login");
+      const data = await res.json();
+      if (data.eventUrl) {
+        setConfig((prev) => ({ ...prev, url: data.eventUrl }));
+      }
+      setIsLogged(true);
+      setLogs((prev) => [
+        ...prev,
+        { level: "success", message: "Sesión lista." },
+      ]);
+    } catch (e) {
+      setLogs((prev) => [
+        ...prev,
+        { level: "error", message: `Login falló: ${e.message}` },
+      ]);
+    }
+  };
 
-  return <button onClick={run}>Probar IPC</button>
+  const handleRun = async (isTest = false) => {
+    setLogs((prev) => [
+      ...prev,
+      { level: "info", message: "Iniciando automatización..." },
+    ]);
+    setRunning(true);
+    try {
+      // payload normal por defecto
+      let payload = { ...config };
+
+      // si es test, agregamos flags para backend (sin romper el formato original)
+      if (isTest) {
+        payload = {
+          ...config,
+          simulateLocal: true,
+          simulate: {
+            preFile: "prueba3.html", // pantalla “todavía no habilitado”
+            liveFile: "prueba.html", // formulario habilitado
+            confirmFile: "prueba2.html", // formulario confirmar 
+            finalFile: "prueba4.html", // post-compra
+            preMs: 10000, // 10s simulando espera/cola
+          },
+        };
+      } 
+
+      // const res = await fetchWithAuth("/api/run", {
+      //   method: "POST",
+      //   body: JSON.stringify(payload),
+      // });
+      const res = await window.api.run(payload);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        console.error("run error:", res.status, err);
+        throw new Error(err?.msg || "Fallo al iniciar");
+      }
+      setRunning(false);
+
+      // progreso por SSE
+    } catch (e) {
+      setLogs((prev) => [
+        ...prev,
+        { level: "error", message: `Run falló: ${e.message}` },
+      ]);
+      setRunning(false);
+    } 
+  };
+
+  const handleStop = async () => {
+    try {
+      // await fetchWithAuth("/api/stop", { method: "POST" });
+      await window.api.stop();
+      setLogs((prev) => [
+        ...prev,
+        { level: "warning", message: "Proceso detenido por el usuario." },
+      ]);
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  // helpers
+  const setCantidad = (n) => {
+    const cantidad = Number(n);
+    const personas = [...config.personas];
+    while (personas.length < cantidad) personas.push({ socio: "", dni: "" });
+    while (personas.length > cantidad) personas.pop();
+    setConfig((c) => ({ ...c, cantidad, personas }));
+  };
+
+  const statusChipClass = `inline-flex items-center gap-2 rounded-full px-4 py-1 text-xs font-semibold uppercase tracking-wide ${
+    isLogged
+      ? "bg-emerald-500/15 text-emerald-200 ring-1 ring-emerald-500/30"
+      : "bg-rose-500/15 text-rose-200 ring-1 ring-rose-500/30"
+  }`;
+
+  
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-red-800 via-red-900 to-red-950 text-white">
+      <div className="mx-auto flex min-h-screen max-w-5xl flex-col gap-10 px-6 py-12 lg:px-10">
+        <header className="space-y-3 flex">
+          <div className="flex-wrap">
+            <span className="text-xs font-semibold uppercase tracking-[0.4em] text-black-400">
+              Bonos CAI
+            </span>
+            <h1 className="text-4xl font-semibold text-white sm:text-5xl">
+              Automatización de canje de bonos
+            </h1>
+            <p className="max-w-2xl text-sm text-white sm:text-base">
+              Configurá los datos y controlá la automatización desde una sola
+              pantalla.
+            </p>
+          </div>
+          <div className="ml-auto flex items-center gap-3">
+            <button
+              className={loginButtonClass}
+              onClick={async () => {
+                setIsLogged(false);
+                setRunning(false);
+
+                clearSession(); // limpia bp_token / bp_session_id
+                await supabase.auth.signOut(); // cierra la sesión de Supabase
+                window.location.href = "/login";
+              }}
+            >
+              Cerrar sesión
+            </button>
+          </div>
+        </header>
+
+        <section className={`${cardClass}`}>
+          <h2 className="text-lg font-semibold text-white">Iniciar Sesión</h2>
+          <p className="mt-1 text-sm text-white">
+            Inicia sesión con tu usuario de CAI Boleteriavip.
+          </p>
+
+          <LoginBox
+            isLogged={isLogged}
+            running={running}
+            email={email}
+            setEmail={setEmail}
+            password={password}
+            setPassword={setPassword}
+            onLogin={handleLogin}
+          />
+        </section>
+
+        <section className={cardClass}>
+          <div className="flex items-center gap-4">
+            <div className="flex-wrap">
+              <h2 className="text-lg font-semibold text-white">
+                Configuración básica
+              </h2>
+              <p className="mt-1 text-sm text-white">
+                URL, sector, cantidad y hora de habilitación que usará el bot.
+              </p>
+            </div>
+
+            <div className="ml-auto flex items-center gap-3">
+              <span
+                className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide ${
+                  editMode
+                    ? "bg-sky-500/15 text-sky-200"
+                    : "bg-red-700/40 text-white"
+                }`}
+              >
+                {editMode ? "Edición habilitada" : "Edición bloqueada"}
+              </span>
+              {!editMode ? (
+                <button
+                  className={loginButtonClass}
+                  onClick={() => setEditMode(true)}
+                  disabled={running} // no permitir entrar a edición mientras corre
+                >
+                  Modificar
+                </button>
+              ) : (
+                <button
+                  className={`${baseButtonClass} bg-emerald-500/90 text-white shadow-sm shadow-emerald-500/30 hover:bg-emerald-400`}
+                  onClick={guardarConfig}
+                >
+                  Guardar
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="mt-6 grid gap-5 md:grid-cols-2">
+            <label className="flex flex-col gap-2 text-sm font-medium text-white">
+              <span className="text-xs uppercase tracking-wide text-white">
+                URL del evento
+              </span>
+              <input
+                className={inputClass}
+                value={config.url}
+                onChange={(e) => setConfig({ ...config, url: e.target.value })}
+                disabled={!editMode || running}
+              />
+            </label>
+
+            {/* SELECT de Sector */}
+            <label className="flex flex-col gap-2 text-sm font-medium text-white">
+              <span className="text-xs uppercase tracking-wide text-white">
+                Sector
+              </span>
+              <select
+                className={inputClass}
+                value={config.sector}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  const found = SECTORES.find(s => s.value === value);
+                  setConfig({
+                  ...config,
+                  sector: value,
+                  sectorName: found ? found.label : '',
+                  });
+                }}
+                disabled={!editMode || running}
+              >
+                <option value="" disabled>
+                  Seleccionar sector
+                </option>
+                {SECTORES.map((s) => (
+                  <option key={s.value} value={s.value}>
+                    {s.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            {/* SELECT de Cantidad 1..6 */}
+            <label className="flex flex-col gap-2 text-sm font-medium text-white">
+              <span className="text-xs uppercase tracking-wide text-white">
+                Cantidad
+              </span>
+              <select
+                className={inputClass}
+                value={config.cantidad}
+                onChange={(e) => setCantidad(e.target.value)}
+                disabled={!editMode || running}
+              >
+                {[1, 2, 3, 4, 5, 6].map((n) => (
+                  <option key={n} value={n}>
+                    {n} {n === 1 ? "persona" : "personas"}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="flex flex-col gap-2 text-sm font-medium text-white">
+              <span className="text-xs uppercase tracking-wide text-white">
+                Hora habilitación (HH:MM:SS)
+              </span>
+              <input
+                className={inputClass}
+                value={config.horaHabilitacion}
+                onChange={(e) =>
+                  setConfig({ ...config, horaHabilitacion: e.target.value })
+                }
+                placeholder="18:00:00"
+                disabled={!editMode || running}
+              />
+            </label>
+          </div>
+        </section>
+
+        <PersonasForm
+          personas={config.personas}
+          onChange={(personas) => setConfig({ ...config, personas })}
+          disabled={!editMode || running}
+        />
+
+        <Controls
+          running={running}
+          onRun={() => handleRun(false)} // real
+          onRunTest={() => handleRun(true)} // test
+          onStop={handleStop}
+        />
+
+        <LogsViewer logs={logs} onClear={() => setLogs([])} />
+      </div>
+    </div>
+  );
 }
 
-export default App
+
+
