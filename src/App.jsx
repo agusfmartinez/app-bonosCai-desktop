@@ -60,29 +60,9 @@ export default function App() {
     let cancelled = false;
 
     const loadConfig = async () => {
-      try {
-        const saved = localStorage.getItem("bonosConfig");
-        if (saved) {
-          console.log("bonosConfig desde localStorage", saved)
-          const parsed = normalizeConfig(JSON.parse(saved));
-          if (parsed && !cancelled) setConfig(parsed);
-          return;
-        }
-
-        const res = await fetchWithAuth("/api/user/config");
-        if (!res.ok) return;
-        const data = await res.json();
-        console.log("bonosConfig desde Supabase", data)
-
-        if (data?.last_config) {
-          const parsed = normalizeConfig(data.last_config);
-          if (parsed && !cancelled) {
-            setConfig(parsed);
-            localStorage.setItem("bonosConfig", JSON.stringify(parsed));
-          }
-        }
-      } catch {
-        // silencioso
+      const local = await window.api.loadConfig()
+      if (local && !cancelled) {
+        setConfig(normalizeConfig(local))
       }
     };
 
@@ -92,32 +72,22 @@ export default function App() {
 
   // SSE 
   useEffect(() => {
-    window.api.onLog((log) => {
-      setLogs((prev) => [...prev, log]);
-    });
-  }, []);
+    const handler = (log) => {
+      setLogs((prev) => [...prev, log])
+    }
+
+    window.api.onLog(handler)
+
+    return () => {
+      window.api.offLog?.(handler)
+    }
+  }, [])
+
 
   const guardarConfig = async () => {
-    try {
-      const res = await fetchWithAuth("/api/user/config", {
-        method: "POST",
-        body: JSON.stringify({ lastConfig: config }),
-      });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        console.error("saveConfig error:", res.status, err);
-        return;
-      }
-
-      localStorage.setItem("bonosConfig", JSON.stringify(config));
-      setEditMode(false);
-    } catch {
-      setLogs((prev) => [
-        ...prev,
-        { level: "error", message: "No se pudo guardar la configuracion." },
-      ]);
-    }
+    await window.api.saveConfig(config)
+    localStorage.setItem("bonosConfig", JSON.stringify(config))
+    setEditMode(false)
   };
 
 
