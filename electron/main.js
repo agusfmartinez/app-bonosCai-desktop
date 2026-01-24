@@ -1,38 +1,103 @@
-const { app, BrowserWindow, ipcMain } = require("electron");
+const { app, BrowserWindow, ipcMain, Menu } = require("electron");
 const path = require("path");
-const Runner = require("./runner/Runner");
-const { registerConfigIpc } = require('./ipc/config.ipc')
+const { initLogger, logToFile } = require("./logger");
+const RunnerManager = require("./runner/RunnerManager");
+const { registerConfigIpc } = require("./ipc/config.ipc");
 
 let win;
 let runner;
+let devLoadRetries = 0;
+const MAX_DEV_RETRIES = 20;
+const DEV_RETRY_DELAY_MS = 500;
+
+process.on("uncaughtException", (err) => {
+  logToFile("error", "MAIN", err.stack || err.message);
+});
+
+process.on("unhandledRejection", (reason) => {
+  logToFile("error", "MAIN", String(reason));
+});
+
+function webContentLogs(win){
+
+  win.webContents.on('did-finish-load', () => {
+    logToFile('info', 'MAIN', `Renderer cargado: ${win.webContents.getURL()}`)
+  });
+
+  win.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
+    logToFile('error', 'MAIN', `Fallo carga renderer ${errorCode} ${errorDescription} url=${validatedURL}`)
+    const isDevUrl = validatedURL && validatedURL.startsWith('http://localhost:5173');
+    if (!app.isPackaged && isDevUrl && errorCode === -102 && devLoadRetries < MAX_DEV_RETRIES) {
+      devLoadRetries += 1;
+      setTimeout(() => {
+        logToFile('info', 'MAIN', `Reintentando carga dev (${devLoadRetries}/${MAX_DEV_RETRIES})`);
+        win.loadURL('http://localhost:5173');
+      }, DEV_RETRY_DELAY_MS);
+    }
+  });
+
+  win.webContents.on('render-process-gone', (_event, details) => {
+    logToFile('error', 'MAIN', `Renderer crash: reason=${details.reason} exitCode=${details.exitCode}`)
+  });
+
+  // Captura errores de consola del renderer (incluye React)
+  win.webContents.on('console-message', (_event, level, message, line, sourceId) => {
+    logToFile('info', 'RENDERER', `console level=${level} ${sourceId}:${line} ${message}`)
+  });
+}
 
 function createWindow() {
   win = new BrowserWindow({
     width: 1200,
     height: 800,
+    icon: path.join(__dirname, "../assets/icon.ico"),
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
+      contextIsolation: true,
+      nodeIntegration: false,
     },
   });
 
-  runner = new Runner((log) => {
+  webContentLogs(win)
+
+  runner = new RunnerManager((log) => {
     win.webContents.send("runner:log", log);
+
+    logToFile(
+      log.level || "info",
+      "RUNNER",
+      log.message || JSON.stringify(log),
+    );
   });
 
-  win.loadURL("http://localhost:5173");
+  if (!app.isPackaged || process.env.ELECTRON_DEV === "true") {
+    win.loadURL("http://localhost:5173");
+    // win.webContents.openDevTools();
+  } else {
+    Menu.setApplicationMenu(null);
+    win.webContents.on("before-input-event", (event, input) => {
+      if (input.control && input.shift && input.key.toLowerCase() === "i") {
+        event.preventDefault();
+      }
+    });
+
+    win.loadFile(path.join(__dirname, "../dist/index.html"));
+  }
 }
 
 ipcMain.handle("runner:run", async (_, config) => {
+  logToFile("info", "IPC", "Runner iniciado");
   return await runner.run(config);
 });
 
 ipcMain.handle("runner:stop", async () => {
+  logToFile("warning", "IPC", "Runner detenido por usuario");
   return await runner.stop();
 });
 
-// app.whenReady().then(createWindow);
-
 app.whenReady().then(() => {
-  createWindow()
-  registerConfigIpc()
-})
+  initLogger();
+  logToFile("info", "MAIN", "App iniciada");
+  createWindow();
+  registerConfigIpc();
+});
