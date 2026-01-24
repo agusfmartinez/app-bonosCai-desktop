@@ -5,10 +5,10 @@ import LogsViewer from "./components/LogsViewer.jsx";
 import LoginBox from "./components/LoginBox.jsx";
 import { cardClass, inputClass, baseButtonClass, loginButtonClass } from "./styles/classes";
 import { fetchWithAuth } from "./lib/api";
+import { useNavigate } from "react-router-dom";
 
 import { supabase } from "./lib/supabase";
 import { clearSession } from "./lib/session";
-
 
 const SECTORES = [
   { value: "52784", label: "PAVONI ALTA" },
@@ -54,6 +54,7 @@ export default function App() {
 
   const [config, setConfig] = useState(() => EMPTY_CONFIG);
 
+  const navigate = useNavigate();
 
   // Carga inicial
   useEffect(() => {
@@ -120,10 +121,10 @@ export default function App() {
   };
 
   const handleRun = async (isTest = false) => {
-    setLogs((prev) => [
-      ...prev,
-      { level: "info", message: "Iniciando automatización..." },
-    ]);
+    // setLogs((prev) => [
+    //   ...prev,
+    //   { level: "info", message: "Iniciando automatización..." },
+    // ]);
     setRunning(true);
     try {
       // payload normal por defecto
@@ -170,10 +171,10 @@ export default function App() {
     try {
       // await fetchWithAuth("/api/stop", { method: "POST" });
       await window.api.stop();
-      setLogs((prev) => [
-        ...prev,
-        { level: "warning", message: "Proceso detenido por el usuario." },
-      ]);
+      // setLogs((prev) => [
+      //   ...prev,
+      //   { level: "warning", message: "Proceso detenido por el usuario." },
+      // ]);
     } finally {
       setRunning(false);
     }
@@ -220,7 +221,8 @@ export default function App() {
 
                 clearSession(); // limpia bp_token / bp_session_id
                 await supabase.auth.signOut(); // cierra la sesión de Supabase
-                window.location.href = "/login";
+
+                navigate("/login", { replace: true });
               }}
             >
               Cerrar sesión

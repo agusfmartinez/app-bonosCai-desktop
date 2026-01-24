@@ -1,3 +1,5 @@
+// src/lib/session.js
+
 import { fetchWithAuth } from './api'
 
 const TOKEN_KEY = 'bp_token'
@@ -29,7 +31,7 @@ export async function initBackendSession({ accessToken, endpoint = '/api/session
 
   const existing = localStorage.getItem(SESSION_ID_KEY) || null;
 
-  const response = await fetch(endpoint, {
+  const response = await fetchWithAuth(endpoint, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${accessToken}`,
