@@ -42,6 +42,7 @@ function webContentLogs(win){
 
   // Captura errores de consola del renderer (incluye React)
   win.webContents.on('console-message', (_event, level, message, line, sourceId) => {
+    if (level < 2) return
     logToFile('info', 'RENDERER', `console level=${level} ${sourceId}:${line} ${message}`)
   });
 }
@@ -86,14 +87,25 @@ function createWindow() {
 }
 
 ipcMain.handle("runner:run", async (_, config) => {
-  logToFile("info", "IPC", "Runner iniciado");
-  return await runner.run(config);
+  const result = await runner.run(config);
+  if (result.ok) {
+    logToFile("info", "IPC", "Runner iniciado");
+  } else {
+    logToFile("warning", "IPC", `Runner no inició: ${result.reason || 'unknown'}`);
+  }
+  return result;
 });
+
 
 ipcMain.handle("runner:stop", async () => {
   logToFile("warning", "IPC", "Runner detenido por usuario");
   return await runner.stop();
 });
+
+ipcMain.handle('runner:status', () => {
+  return runner.getStatus()
+})
+
 
 app.whenReady().then(() => {
   initLogger();
