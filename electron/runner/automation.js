@@ -273,7 +273,13 @@ async function runAutomation({
     pushLog(
       `🧪 Modo Test: esperando ${preMs}ms en ${preFile} antes de habilitar el formulario...`
     );
-    await page.waitForTimeout(preMs);
+    if (shouldStop && shouldStop()) return;
+    try {
+      await page.waitForTimeout(preMs);
+    } catch (e) {
+      if (shouldStop && shouldStop()) return;
+      throw e;
+    }
     await gotoWithLog(page, liveUrl, pushLog);
 
     // Sobrescribimos "url" para el resto del flujo (ej: refrescos por hora objetivo)

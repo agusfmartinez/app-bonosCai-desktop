@@ -42,11 +42,23 @@ process.on('message', async (msg) => {
       process.send({ type: 'done' })
 
     } catch (err) {
+      const message = err?.stack || err?.message || String(err)
+      const isClosed =
+        typeof message === 'string' &&
+        (message.includes('closed') || message.includes('Target page'))
+      if (stopFlag || isClosed) {
+        process.send({
+          type: 'log',
+          payload: { level: 'warning', message: 'Proceso detenido por el usuario.' },
+        })
+        process.send({ type: 'done' })
+        return
+      }
       process.send({
         type: 'log',
-        payload: { level: 'error', message: err.message },
+        payload: { level: 'error', message },
       })
-      process.send({ type: 'error', error: err.message })
+      process.send({ type: 'error', error: message })
     } finally {
       try {
         if (browser) await browser.close()

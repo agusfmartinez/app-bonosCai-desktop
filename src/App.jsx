@@ -10,6 +10,9 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "./lib/supabase";
 import { clearSession } from "./lib/session";
 
+import { useRunnerStatus } from './hooks/useRunnerStatus'
+
+
 const SECTORES = [
   { value: "52784", label: "PAVONI ALTA" },
   { value: "52074", label: "PAVONI BAJA" },
@@ -55,6 +58,9 @@ export default function App() {
   const [config, setConfig] = useState(() => EMPTY_CONFIG);
 
   const navigate = useNavigate();
+
+  const { status, error } = useRunnerStatus()
+  const isRunning = status === 'running' || status === 'stopping'
 
   // Carga inicial
   useEffect(() => {
@@ -121,11 +127,6 @@ export default function App() {
   };
 
   const handleRun = async (isTest = false) => {
-    // setLogs((prev) => [
-    //   ...prev,
-    //   { level: "info", message: "Iniciando automatización..." },
-    // ]);
-    setRunning(true);
     try {
       // payload normal por defecto
       let payload = { ...config };
@@ -145,39 +146,16 @@ export default function App() {
         };
       } 
 
-      // const res = await fetchWithAuth("/api/run", {
-      //   method: "POST",
-      //   body: JSON.stringify(payload),
-      // });
       const res = await window.api.run(payload);
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        console.error("run error:", res.status, err);
-        throw new Error(err?.msg || "Fallo al iniciar");
-      }
-      setRunning(false);
+      if (!res.ok) throw new Error(res.msg || 'No se pudo iniciar')
 
-      // progreso por SSE
     } catch (e) {
-      setLogs((prev) => [
-        ...prev,
-        { level: "error", message: `Run falló: ${e.message}` },
-      ]);
-      setRunning(false);
+      setLogs(prev => [...prev, { level: 'error', message: e.message }])
     } 
   };
 
   const handleStop = async () => {
-    try {
-      // await fetchWithAuth("/api/stop", { method: "POST" });
-      await window.api.stop();
-      // setLogs((prev) => [
-      //   ...prev,
-      //   { level: "warning", message: "Proceso detenido por el usuario." },
-      // ]);
-    } finally {
-      setRunning(false);
-    }
+    await window.api.stop();
   };
 
   // helpers
@@ -238,7 +216,7 @@ export default function App() {
 
           <LoginBox
             isLogged={isLogged}
-            running={running}
+            running={isRunning}
             email={email}
             setEmail={setEmail}
             password={password}
@@ -272,7 +250,7 @@ export default function App() {
                 <button
                   className={loginButtonClass}
                   onClick={() => setEditMode(true)}
-                  disabled={running} // no permitir entrar a edición mientras corre
+                  disabled={isRunning} // no permitir entrar a edición mientras corre
                 >
                   Modificar
                 </button>
@@ -296,7 +274,7 @@ export default function App() {
                 className={inputClass}
                 value={config.url}
                 onChange={(e) => setConfig({ ...config, url: e.target.value })}
-                disabled={!editMode || running}
+                disabled={!editMode || isRunning}
               />
             </label>
 
@@ -317,7 +295,7 @@ export default function App() {
                   sectorName: found ? found.label : '',
                   });
                 }}
-                disabled={!editMode || running}
+                disabled={!editMode || isRunning}
               >
                 <option value="" disabled>
                   Seleccionar sector
@@ -339,7 +317,7 @@ export default function App() {
                 className={inputClass}
                 value={config.cantidad}
                 onChange={(e) => setCantidad(e.target.value)}
-                disabled={!editMode || running}
+                disabled={!editMode || isRunning}
               >
                 {[1, 2, 3, 4, 5, 6].map((n) => (
                   <option key={n} value={n}>
@@ -360,7 +338,7 @@ export default function App() {
                   setConfig({ ...config, horaHabilitacion: e.target.value })
                 }
                 placeholder="18:00:00"
-                disabled={!editMode || running}
+                disabled={!editMode || isRunning}
               />
             </label>
           </div>
@@ -369,11 +347,11 @@ export default function App() {
         <PersonasForm
           personas={config.personas}
           onChange={(personas) => setConfig({ ...config, personas })}
-          disabled={!editMode || running}
+          disabled={!editMode || isRunning}
         />
 
         <Controls
-          running={running}
+          status={status}
           onRun={() => handleRun(false)} // real
           onRunTest={() => handleRun(true)} // test
           onStop={handleStop}
