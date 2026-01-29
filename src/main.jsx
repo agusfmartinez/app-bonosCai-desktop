@@ -16,6 +16,7 @@ import Login from "./pages/Login.jsx";
 import Pending from "./pages/Pending.jsx";
 import Signup from "./pages/Signup.jsx";
 import Loading from "./components/Loading.jsx";
+import SessionExpired from "./components/SessionExpired.jsx";
 
 
 const PUBLIC_ROUTES = ["/login", "/signup", "/pending"];
@@ -24,6 +25,7 @@ function useAuthGate() {
   const [ready, setReady] = useState(false);
   const [allowed, setAllowed] = useState(false);
   const [bootstrapped, setBootstrapped] = useState(false);
+  const [expired, setExpired] = useState(false);
 
 
   const navigate = useNavigate();
@@ -81,6 +83,13 @@ function useAuthGate() {
       navigate(result?.reason === 'forbidden' ? '/pending' : '/login', { replace: true })
     }
 
+    const handleExpiredSession = async () => {
+      await supabase.auth.signOut()
+      clearSession()
+      setAllowed(false)
+      setExpired(true)
+    }
+
     // Suscripción a cambios de auth (una sola vez)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.info('[AUTH] onAuthStateChange', { event, hasSession: !!session });
@@ -88,7 +97,7 @@ function useAuthGate() {
         cleanupChannel()
         clearSession()
         setAllowed(false)
-        if (bootstrapped && !PUBLIC_ROUTES.includes(location.pathname)) {
+        if (bootstrapped && !expired && !PUBLIC_ROUTES.includes(location.pathname)) {
           navigate('/login', { replace: true })
         }
         return
@@ -112,6 +121,10 @@ function useAuthGate() {
         const result = await initBackendSession({ accessToken: curToken })
         console.info('[AUTH] initBackendSession result', result);
         if (!result.ok) {
+          if (result.status === 401) {
+            await handleExpiredSession()
+            return
+          }
           await handleInitFailure(result)
           return
         }
@@ -125,17 +138,32 @@ function useAuthGate() {
       // Ignorar: INITIAL_SESSION, TOKEN_REFRESHED, USER_UPDATED
     })
 
-    // Bootstrap: no invocar init acá; solo preparar estado inicial y marcar ready
+    // Bootstrap: refrescar token si es necesario antes de validar con backend
     ;(async () => {
       try {
         const { data: initial } = await supabase.auth.getSession()
         console.info('[AUTH] bootstrap getSession', { hasSession: !!initial.session });
 
         if (initial.session) {
-          const accessToken = initial.session.access_token;
+          let session = initial.session
+          const expiresAt = (session.expires_at || 0) * 1000
+          if (expiresAt && Date.now() > expiresAt - 30_000) {
+            const { data: refreshed, error } = await supabase.auth.refreshSession()
+            if (error || !refreshed?.session) {
+              await handleExpiredSession()
+              return
+            }
+            session = refreshed.session
+          }
+
+          const accessToken = session.access_token;
           const result = await initBackendSession({ accessToken });
 
           if (!result.ok) {
+            if (result.status === 401) {
+              await handleExpiredSession()
+              return
+            }
             await handleInitFailure(result);
             return;
           }
@@ -153,18 +181,27 @@ function useAuthGate() {
       }
     })()
 
+    let expireTimer
+    if (expired) {
+      expireTimer = setTimeout(() => {
+        navigate('/login', { replace: true })
+      }, 1200)
+    }
+
     return () => {
+      if (expireTimer) clearTimeout(expireTimer)
       subscription.unsubscribe()
       cleanupChannel()
     }
-  }, [navigate, bootstrapped, location.pathname])
+  }, [navigate, bootstrapped, location.pathname, expired])
 
-  return { ready, allowed };
+  return { ready, allowed, expired };
 }
 
 function Root() {
-  const { ready, allowed } = useAuthGate();
+  const { ready, allowed, expired } = useAuthGate();
   if (!ready) return <Loading />;
+  if (expired) return <SessionExpired />;
 
   return (
     <Routes>
