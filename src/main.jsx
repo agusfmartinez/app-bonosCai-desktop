@@ -33,6 +33,7 @@ function useAuthGate() {
   
   const channelRef = useRef(null);
   const authSubRef = useRef(null);
+  const expireTimerRef = useRef(null);
 
   const cleanupChannel = async () => {
   const ch = channelRef.current
@@ -88,6 +89,10 @@ function useAuthGate() {
       setAllowed(false)
       setBootstrapped(true)
       setReady(true)
+      if (expireTimerRef.current) clearTimeout(expireTimerRef.current)
+      expireTimerRef.current = setTimeout(() => {
+        navigate('/login', { replace: true })
+      }, 1200)
       try {
         await supabase.auth.signOut()
       } finally {
@@ -186,15 +191,8 @@ function useAuthGate() {
       }
     })()
 
-    let expireTimer
-    if (expired) {
-      expireTimer = setTimeout(() => {
-        navigate('/login', { replace: true })
-      }, 1200)
-    }
-
     return () => {
-      if (expireTimer) clearTimeout(expireTimer)
+      if (expireTimerRef.current) clearTimeout(expireTimerRef.current)
       subscription.unsubscribe()
       cleanupChannel()
     }
