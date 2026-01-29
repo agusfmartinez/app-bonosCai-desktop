@@ -287,6 +287,7 @@ async function runAutomation({
   cookieName,
   loginUrl,
   onCookies,
+  finalizePurchase = true,
 }) {
   if (!simulateLocal) {
     if (url) {
@@ -501,6 +502,11 @@ async function runAutomation({
       throw new Error(`No se encontró ${selDni}`);
     }
     await page.fill(selDni, String(dni));
+  }
+
+  if (!finalizePurchase) {
+    pushLog("⏸️ Modo prueba: se detiene antes de finalizar compra.");
+    return;
   }
 
   // Continuar a pagina confirmacion
