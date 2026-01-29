@@ -3,9 +3,6 @@ const path = require("path");
 const { pathToFileURL } = require("url");
 const { logStamp } = require("./helpers");
 
-const DEFAULT_LOGIN_URL = "https://cai.boleteriavip.com.ar/ingresar";
-const DEFAULT_COOKIE_NAME = "bolvipwebappauth";
-
 async function loginProgrammatic({
   page,
   email,
@@ -295,7 +292,10 @@ async function runAutomation({
     if (url) {
       await gotoWithLog(page, url, pushLog);
     } else {
-      const entryUrl = loginUrl || DEFAULT_LOGIN_URL;
+      if (!loginUrl) {
+        throw new Error("LOGIN_URL requerido para iniciar el login");
+      }
+      const entryUrl = loginUrl;
       await gotoWithLog(page, entryUrl, pushLog);
     }
     if (email && password) {
@@ -303,7 +303,7 @@ async function runAutomation({
         page,
         email,
         password,
-        cookieName: cookieName || DEFAULT_COOKIE_NAME,
+        cookieName,
         pushLog,
       });
       if (loginRes?.ok) {
