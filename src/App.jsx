@@ -60,6 +60,8 @@ export default function App() {
 
   const { status, error } = useRunnerStatus()
   const isRunning = status === 'running' || status === 'stopping'
+  const isDev = import.meta.env.DEV
+  const [finalizePurchase, setFinalizePurchase] = useState(true)
 
   // Carga inicial
   useEffect(() => {
@@ -153,7 +155,7 @@ export default function App() {
   const handleRun = async (isTest = false) => {
     try {
       // payload normal por defecto
-      let payload = { ...config, email, password };
+      let payload = { ...config, email, password, finalizePurchase };
 
       // si es test, agregamos flags para backend (sin romper el formato original)
       if (isTest) {
@@ -377,8 +379,11 @@ export default function App() {
         <Controls
           status={status}
           onRun={() => handleRun(false)} // real
-          onRunTest={() => handleRun(true)} // test
+          onRunTest={isDev ? () => handleRun(true) : undefined} // test only in dev
           onStop={handleStop}
+          showTestToggle={isDev}
+          finalizePurchase={finalizePurchase}
+          onToggleFinalize={setFinalizePurchase}
         />
 
         <LogsViewer logs={logs} onClear={() => setLogs([])} />

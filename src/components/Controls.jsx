@@ -2,7 +2,15 @@ import React from 'react'
 import { cardClass, runButtonClass, testButtonClass, stopButtonClass } from '../styles/classes'
 
 
-export default function Controls({ status, onRun, onRunTest, onStop }) {
+export default function Controls({
+  status,
+  onRun,
+  onRunTest,
+  onStop,
+  showTestToggle = false,
+  finalizePurchase = true,
+  onToggleFinalize,
+}) {
   const isRunning = status === 'running' || status === 'stopping'
 
   return (
@@ -16,6 +24,28 @@ export default function Controls({ status, onRun, onRunTest, onStop }) {
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
+          {showTestToggle && (
+            <label className="flex items-center gap-2 text-sm text-white">
+              <span>Finalizar compra</span>
+              <button
+                type="button"
+                onClick={() => onToggleFinalize && onToggleFinalize(!finalizePurchase)}
+                className={`relative inline-flex h-6 w-12 items-center rounded-full transition ${
+                  finalizePurchase ? 'bg-emerald-500' : 'bg-slate-500/60'
+                }`}
+              >
+                <span
+                  className={`inline-block h-5 w-5 transform rounded-full bg-white transition ${
+                    finalizePurchase ? 'translate-x-6' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+              <span className="text-xs text-white/70">
+                {finalizePurchase ? 'Sí' : 'No'}
+              </span>
+            </label>
+          )}
+
           <button
             onClick={onRun}
             disabled={isRunning}
@@ -24,13 +54,15 @@ export default function Controls({ status, onRun, onRunTest, onStop }) {
             {isRunning ? 'Ejecutando…' : 'Ejecutar automatización'}
           </button>
 
-          <button
-            onClick={onRunTest}
-            disabled={isRunning}
-            className={testButtonClass}
-          >
-            {isRunning ? 'Ejecutando…' : 'Ejecutar modo test'}
-          </button>
+          {onRunTest && (
+            <button
+              onClick={onRunTest}
+              disabled={isRunning}
+              className={testButtonClass}
+            >
+              {isRunning ? 'Ejecutando…' : 'Ejecutar modo test'}
+            </button>
+          )}
 
           <button
             onClick={onStop}
