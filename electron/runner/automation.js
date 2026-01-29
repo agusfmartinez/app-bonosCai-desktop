@@ -3,6 +3,9 @@ const path = require("path");
 const { pathToFileURL } = require("url");
 const { logStamp } = require("./helpers");
 
+const DEFAULT_LOGIN_URL = "https://cai.boleteriavip.com.ar/ingresar";
+const DEFAULT_COOKIE_NAME = "bolvipwebappauth";
+
 async function loginProgrammatic({
   page,
   email,
@@ -17,6 +20,28 @@ async function loginProgrammatic({
     const selBtn = 'button[type="submit"]';
     const eventLinkSelector = 'a.btn-cai:has-text("Entradas")';
 
+    const detectExistingSession = async () => {
+      try {
+        let eventUrl = null;
+        if (await waitForSelectorWithLog(page, eventLinkSelector, 4000, "Boton Evento", pushLog)) {
+          eventUrl = await page.$eval(eventLinkSelector, (el) => el.href);
+        }
+        const ctx = page.context();
+        if (!ctx) return { ok: false };
+        const cookies = await ctx.cookies();
+        const hasCookie = cookieName
+          ? cookies.some((c) => c.name === cookieName)
+          : cookies.length > 0;
+        if (eventUrl || hasCookie) {
+          pushLog("Sesion ya iniciada");
+          return { ok: true, cookies, eventUrl };
+        }
+        return { ok: false };
+      } catch {
+        return { ok: false };
+      }
+    };
+
     // Esperá y completá
     if (
       await waitForSelectorWithLog(
@@ -29,7 +54,9 @@ async function loginProgrammatic({
     ) {
       await page.fill(selEmail, email);
     } else {
-      return { ok: false, cookies: [], error: "No se encontró campo Email" };
+      const existing = await detectExistingSession();
+      if (existing.ok) return existing;
+      return { ok: false, cookies: [], error: "No se encontr? campo Email" };
     }
 
     if (
@@ -43,7 +70,9 @@ async function loginProgrammatic({
     ) {
       await page.fill(selPass, password);
     } else {
-      return { ok: false, cookies: [], error: "No se encontró campo Password" };
+      const existing = await detectExistingSession();
+      if (existing.ok) return existing;
+      return { ok: false, cookies: [], error: "No se encontr? campo Password" };
     }
 
     // Click submit + esperar navegación
@@ -56,7 +85,9 @@ async function loginProgrammatic({
         pushLog
       ))
     ) {
-      return { ok: false, cookies: [], error: "No se encontró botón de Login" };
+      const existing = await detectExistingSession();
+      if (existing.ok) return existing;
+      return { ok: false, cookies: [], error: "No se encontr? bot?n de Login" };
     }
 
     await Promise.all([
@@ -90,13 +121,15 @@ async function loginProgrammatic({
       return { ok: false, cookies: [], error: "Contexto cerrado." };
     }
     const cookies = await ctx.cookies();
-    const ok = cookies.some((c) => c.name === cookieName);
-    if (!ok)
-      return {
-        ok: false,
-        cookies: [],
-        error: "No se detectó cookie de sesión",
-      };
+    if (cookieName) {
+      const ok = cookies.some((c) => c.name === cookieName);
+      if (!ok)
+        return {
+          ok: false,
+          cookies: [],
+          error: "No se detectó cookie de sesión",
+        };
+    }
 
     pushLog("✅ Login detectado por cookie de sesión");
     return { cookies, ok: true, eventUrl };
@@ -252,10 +285,45 @@ async function runAutomation({
   simulate = undefined, // 👈 nuevo { preFile, liveFile, finalFile, preMs }
   pushLog,
   shouldStop,
-  userEmail,
+  email,
+  password,
+  cookieName,
+  loginUrl,
+  onCookies,
 }) {
   if (!simulateLocal) {
-    await gotoWithLog(page, url, pushLog);
+    if (url) {
+      await gotoWithLog(page, url, pushLog);
+    } else {
+      const entryUrl = loginUrl || DEFAULT_LOGIN_URL;
+      await gotoWithLog(page, entryUrl, pushLog);
+    }
+    if (email && password) {
+      const loginRes = await loginProgrammatic({
+        page,
+        email,
+        password,
+        cookieName: cookieName || DEFAULT_COOKIE_NAME,
+        pushLog,
+      });
+      if (loginRes?.ok) {
+        if (onCookies) onCookies(loginRes.cookies || []);
+        if (loginRes?.eventUrl) {
+          url = loginRes.eventUrl;
+          await gotoWithLog(page, url, pushLog);
+        }
+      } else if (!loginRes?.ok) {
+        const msg = String(loginRes?.error || "");
+        const soft =
+          msg.includes("No se encontró campo") ||
+          msg.includes("No se detectó cookie") ||
+          msg.includes("botón del Evento");
+        if (!soft) {
+          throw new Error(`LOGIN_FAILED: ${msg || "desconocido"}`);
+        }
+        pushLog("⚠️ Login no requerido o no detectado, continuando...");
+      }
+    }
   } else {
     // Modo test
     const preFile = simulate?.preFile || "prueba3.html";
@@ -290,6 +358,10 @@ async function runAutomation({
 
     // Guardamos finalUrl para usarlo en el click de Confirmar
     page._finalTestUrl = finalUrl;
+  }
+
+  if (!url) {
+    throw new Error("URL requerida para iniciar la automatización");
   }
 
   // Esperar que habilite el formulario (misma lógica real o test)

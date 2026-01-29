@@ -84,10 +84,15 @@ function useAuthGate() {
     }
 
     const handleExpiredSession = async () => {
-      await supabase.auth.signOut()
-      clearSession()
-      setAllowed(false)
       setExpired(true)
+      setAllowed(false)
+      setBootstrapped(true)
+      setReady(true)
+      try {
+        await supabase.auth.signOut()
+      } finally {
+        clearSession()
+      }
     }
 
     // Suscripción a cambios de auth (una sola vez)

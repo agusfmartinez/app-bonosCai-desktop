@@ -3,6 +3,7 @@ const path = require("path");
 const { initLogger, logToFile } = require("./logger");
 const RunnerManager = require("./runner/RunnerManager");
 const { registerConfigIpc } = require("./ipc/config.ipc");
+const fs = require("fs");
 
 let win;
 let runner;
@@ -96,6 +97,16 @@ ipcMain.handle("runner:run", async (_, config) => {
   return result;
 });
 
+ipcMain.handle("runner:login", async (_, payload) => {
+  const result = await runner.login(payload);
+  if (result?.ok) {
+    logToFile("info", "IPC", "Login CAI iniciado");
+  } else {
+    logToFile("warning", "IPC", `Login CAI falló: ${result?.error || result?.reason || 'unknown'}`);
+  }
+  return result;
+});
+
 
 ipcMain.handle("runner:stop", async () => {
   logToFile("warning", "IPC", "Runner detenido por usuario");
@@ -106,10 +117,34 @@ ipcMain.handle('runner:status', () => {
   return runner.getStatus()
 })
 
+ipcMain.handle('runner:loginStatus', () => {
+  try {
+    const cookiesPath = process.env.BVIP_COOKIES_PATH || path.join(app.getPath("userData"), "cookies.json")
+    if (!fs.existsSync(cookiesPath)) return { ok: false, reason: 'not-found' }
+    const raw = fs.readFileSync(cookiesPath, "utf-8")
+    const data = JSON.parse(raw)
+    const savedAt = Number(data?.savedAt || 0)
+    const ttl = Number(process.env.BVIP_COOKIES_TTL || 10800)
+    const ageSeconds = savedAt ? (Date.now() - savedAt) / 1000 : Infinity
+    if (!savedAt || ageSeconds > ttl) return { ok: false, reason: 'expired' }
+    const cookies = Array.isArray(data?.cookies) ? data.cookies : []
+    const hasSession = cookies.some((c) => c.name === "bolvipwebappauth")
+    return { ok: hasSession }
+  } catch {
+    return { ok: false, reason: 'error' }
+  }
+})
+
 
 app.whenReady().then(() => {
   initLogger();
   logToFile("info", "MAIN", "App iniciada");
+  if (!process.env.BVIP_COOKIES_PATH) {
+    process.env.BVIP_COOKIES_PATH = path.join(app.getPath("userData"), "cookies.json");
+  }
+  if (!process.env.BVIP_COOKIES_TTL) {
+    process.env.BVIP_COOKIES_TTL = "10800";
+  }
   createWindow();
   registerConfigIpc();
 });
