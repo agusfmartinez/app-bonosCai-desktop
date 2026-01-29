@@ -4,7 +4,6 @@ import Controls from "./components/Controls.jsx";
 import LogsViewer from "./components/LogsViewer.jsx";
 import LoginBox from "./components/LoginBox.jsx";
 import { cardClass, inputClass, baseButtonClass, loginButtonClass } from "./styles/classes";
-import { fetchWithAuth } from "./lib/api";
 import { useNavigate } from "react-router-dom";
 
 import { supabase } from "./lib/supabase";
@@ -77,6 +76,22 @@ export default function App() {
     return () => { cancelled = true; };
   }, []);
 
+  useEffect(() => {
+    let mounted = true
+    const checkLogin = async () => {
+      try {
+        const res = await window.api.getLoginStatus()
+        if (!mounted) return
+        setIsLogged(!!res?.ok)
+      } catch {
+        if (!mounted) return
+        setIsLogged(false)
+      }
+    }
+    checkLogin()
+    return () => { mounted = false }
+  }, [])
+
   // SSE 
   useEffect(() => {
     const handler = (log) => {
@@ -99,19 +114,16 @@ export default function App() {
 
 
   const handleLogin = async () => {
+    if (!email.trim() || !password.trim()) return
     setLogs((prev) => [
       ...prev,
       { level: "info", message: "Abriendo login..." },
     ]);
     try {
-      const res = await fetchWithAuth("/api/login", {
-        method: "POST",
-        body: JSON.stringify({ email, password }),
-      });
-      if (!res.ok) throw new Error("Fallo login");
-      const data = await res.json();
-      if (data.eventUrl) {
-        setConfig((prev) => ({ ...prev, url: data.eventUrl }));
+      const result = await window.api.login({ email, password })
+      if (!result?.ok) throw new Error(result?.error || "Fallo login")
+      if (result?.eventUrl) {
+        setConfig((prev) => ({ ...prev, url: result.eventUrl }));
       }
       setIsLogged(true);
       setLogs((prev) => [
@@ -129,7 +141,7 @@ export default function App() {
   const handleRun = async (isTest = false) => {
     try {
       // payload normal por defecto
-      let payload = { ...config };
+      let payload = { ...config, email, password };
 
       // si es test, agregamos flags para backend (sin romper el formato original)
       if (isTest) {

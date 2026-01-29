@@ -37,7 +37,7 @@ export default function LoginBox({
           onChange={(e) => setEmail(e.target.value)}
           onKeyDown={onKeyDown}
           disabled={running}
-          autoComplete="email"
+          autoComplete="on"
         />
       </label>
 
