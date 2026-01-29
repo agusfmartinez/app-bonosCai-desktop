@@ -1,3 +1,4 @@
+require("dotenv/config");
 const fs = require("fs");
 const path = require("path");
 const { chromium } = require("playwright");
@@ -7,8 +8,8 @@ const COOKIES_PATH =
   process.env.BVIP_COOKIES_PATH ||
   path.join(__dirname, "cookies.json");
 const COOKIES_TTL_SECONDS = Number(process.env.BVIP_COOKIES_TTL || 10800);
-const DEFAULT_LOGIN_URL = "https://cai.boleteriavip.com.ar/ingresar";
-const DEFAULT_COOKIE_NAME = "bolvipwebappauth";
+const LOGIN_URL = process.env.BVIP_LOGIN_URL || "https://cai.boleteriavip.com.ar/ingresar";
+const COOKIE_NAME = process.env.BVIP_COOKIE_NAME || "bolvipwebappauth";
 
 async function detectEventUrl(page) {
   try {
@@ -93,6 +94,8 @@ process.on('message', async (msg) => {
 
       await runAutomation({
         ...msg.payload,
+        loginUrl: msg.payload?.loginUrl || LOGIN_URL,
+        cookieName: msg.payload?.cookieName || COOKIE_NAME,
         page,
         onCookies: (cookies, eventUrl) => {
           if (Array.isArray(cookies) && cookies.length) {
@@ -172,7 +175,7 @@ process.on('message', async (msg) => {
       }
 
       page = await context.newPage()
-      await page.goto(loginUrl || DEFAULT_LOGIN_URL, { waitUntil: "load" })
+      await page.goto(loginUrl || LOGIN_URL, { waitUntil: "load" })
 
       let result = null
       const existingEventUrl = await detectEventUrl(page)
@@ -184,7 +187,7 @@ process.on('message', async (msg) => {
           page,
           email,
           password,
-          cookieName: cookieName || DEFAULT_COOKIE_NAME,
+          cookieName: cookieName || COOKIE_NAME,
           pushLog: (m) => process.send({ type: 'log', payload: { level: 'info', message: m } }),
         })
       }
@@ -200,7 +203,7 @@ process.on('message', async (msg) => {
         } catch {
           cookies = []
         }
-        const hasCookie = cookies.some((c) => c.name === (cookieName || DEFAULT_COOKIE_NAME))
+        const hasCookie = cookies.some((c) => c.name === (cookieName || COOKIE_NAME))
         if (eventUrl || hasCookie) {
           result = { ok: true, eventUrl, cookies }
         } else {

@@ -26,3 +26,5 @@ dist-ssr
 electron/runner/test/Independiente vs River _ Club Atlético Independiente_files/*
 electron/runner/test/Tickets confirmado _ Club Atlético Independiente_files/*
 electron/runner/test/Tickets tarifas _ Club Atlético Independiente_files/*
+
+.env
