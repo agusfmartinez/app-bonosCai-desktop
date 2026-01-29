@@ -129,7 +129,7 @@ ipcMain.handle('runner:loginStatus', () => {
     if (!savedAt || ageSeconds > ttl) return { ok: false, reason: 'expired' }
     const cookies = Array.isArray(data?.cookies) ? data.cookies : []
     const hasSession = cookies.some((c) => c.name === "bolvipwebappauth")
-    return { ok: hasSession }
+    return { ok: hasSession, eventUrl: data?.eventUrl || null }
   } catch {
     return { ok: false, reason: 'error' }
   }

@@ -307,7 +307,7 @@ async function runAutomation({
         pushLog,
       });
       if (loginRes?.ok) {
-        if (onCookies) onCookies(loginRes.cookies || []);
+        if (onCookies) onCookies(loginRes.cookies || [], loginRes.eventUrl || null);
         if (loginRes?.eventUrl) {
           url = loginRes.eventUrl;
           await gotoWithLog(page, url, pushLog);

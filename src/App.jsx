@@ -68,7 +68,12 @@ export default function App() {
     const loadConfig = async () => {
       const local = await window.api.loadConfig()
       if (local && !cancelled) {
-        setConfig(normalizeConfig(local))
+        const normalized = normalizeConfig(local)
+        const cached = JSON.parse(localStorage.getItem("bonosConfig") || "null")
+        if (cached?.url && !normalized?.url) {
+          normalized.url = cached.url
+        }
+        setConfig(normalizeConfig(normalized))
       }
     };
 
@@ -83,6 +88,9 @@ export default function App() {
         const res = await window.api.getLoginStatus()
         if (!mounted) return
         setIsLogged(!!res?.ok)
+        if (res?.ok && res?.eventUrl && !config.url) {
+          setConfig((prev) => ({ ...prev, url: res.eventUrl }))
+        }
       } catch {
         if (!mounted) return
         setIsLogged(false)
@@ -90,7 +98,7 @@ export default function App() {
     }
     checkLogin()
     return () => { mounted = false }
-  }, [])
+  }, [config.url])
 
   // SSE 
   useEffect(() => {
@@ -123,7 +131,11 @@ export default function App() {
       const result = await window.api.login({ email, password })
       if (!result?.ok) throw new Error(result?.error || "Fallo login")
       if (result?.eventUrl) {
-        setConfig((prev) => ({ ...prev, url: result.eventUrl }));
+        setConfig((prev) => {
+          const updated = { ...prev, url: result.eventUrl }
+          localStorage.setItem("bonosConfig", JSON.stringify(updated))
+          return updated
+        });
       }
       setIsLogged(true);
       setLogs((prev) => [
