@@ -31,17 +31,21 @@ function loadCookiesFromFile() {
     if (ageSeconds > COOKIES_TTL_SECONDS) {
       return null;
     }
-    return Array.isArray(data?.cookies) ? data.cookies : null;
+    return {
+      cookies: Array.isArray(data?.cookies) ? data.cookies : [],
+      eventUrl: data?.eventUrl || null,
+    };
   } catch {
     return null;
   }
 }
 
-function saveCookiesToFile(cookies) {
+function saveCookiesToFile(cookies, eventUrl = null) {
   try {
     const payload = {
       savedAt: Date.now(),
       cookies,
+      eventUrl,
     };
     fs.writeFileSync(COOKIES_PATH, JSON.stringify(payload, null, 2));
   } catch {}
@@ -69,8 +73,9 @@ process.on('message', async (msg) => {
       })
 
       context = await browser.newContext({ viewport: null })
-      const cachedCookies = loadCookiesFromFile()
-      if (cachedCookies && cachedCookies.length) {
+      const cached = loadCookiesFromFile()
+      const cachedCookies = cached?.cookies || []
+      if (cachedCookies.length) {
         try {
           await context.addCookies(cachedCookies)
           process.send({
@@ -89,9 +94,9 @@ process.on('message', async (msg) => {
       await runAutomation({
         ...msg.payload,
         page,
-        onCookies: (cookies) => {
+        onCookies: (cookies, eventUrl) => {
           if (Array.isArray(cookies) && cookies.length) {
-            saveCookiesToFile(cookies)
+            saveCookiesToFile(cookies, eventUrl || null)
             process.send({
               type: 'log',
               payload: { level: 'info', message: '🍪 Cookies guardadas en disco.' },
@@ -204,7 +209,7 @@ process.on('message', async (msg) => {
       }
 
       if (result?.cookies?.length) {
-        saveCookiesToFile(result.cookies)
+        saveCookiesToFile(result.cookies, result?.eventUrl || null)
         process.send({
           type: 'log',
           payload: { level: 'info', message: '🍪 Cookies guardadas en disco.' },
