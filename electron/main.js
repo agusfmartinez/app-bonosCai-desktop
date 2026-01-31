@@ -57,10 +57,29 @@ function createWindow() {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
       nodeIntegration: false,
+      sandbox: true,              // ✅ recomendado
+      webSecurity: true,          // ✅ default, pero explícito
+      allowRunningInsecureContent: false, // ✅
     },
   });
 
   webContentLogs(win)
+
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    logToFile('warning', 'SECURITY', `Bloqueado window.open a: ${url}`)
+    return { action: 'deny' }
+  })
+
+  win.webContents.on('will-navigate', (event, url) => {
+    const allowed =
+      url.startsWith('file://') ||
+      (!app.isPackaged && url.startsWith('http://localhost:5173'))
+
+    if (!allowed) {
+      event.preventDefault()
+      logToFile('warning', 'SECURITY', `Bloqueado navigate a: ${url}`)
+    }
+  })
 
   runner = new RunnerManager((log) => {
     win.webContents.send("runner:log", log);
@@ -87,15 +106,33 @@ function createWindow() {
   }
 }
 
-ipcMain.handle("runner:run", async (_, config) => {
-  const result = await runner.run(config);
-  if (result.ok) {
-    logToFile("info", "IPC", "Runner iniciado");
-  } else {
-    logToFile("warning", "IPC", `Runner no inició: ${result.reason || 'unknown'}`);
+function validateRunConfig(cfg) {
+  if (!cfg || typeof cfg !== 'object') return { ok: false, msg: 'Config inválida' }
+  if (!cfg.url || typeof cfg.url !== 'string') return { ok: false, msg: 'Falta url' }
+  if (!cfg.sector || typeof cfg.sector !== 'string') return { ok: false, msg: 'Falta sector' }
+
+  const cantidad = Number(cfg.cantidad)
+  if (!Number.isInteger(cantidad) || cantidad < 1 || cantidad > 6) {
+    return { ok: false, msg: 'Cantidad inválida' }
   }
-  return result;
-});
+
+  if (!Array.isArray(cfg.personas) || cfg.personas.length < cantidad) {
+    return { ok: false, msg: 'personas[] insuficiente' }
+  }
+
+  return { ok: true }
+}
+
+ipcMain.handle("runner:run", async (_, config) => {
+  const v = validateRunConfig(config)
+  if (!v.ok) {
+    logToFile('warning', 'IPC', `runner:run rechazado: ${v.msg}`)
+    return { ok: false, msg: v.msg }
+  }
+  logToFile("info", "IPC", "Runner iniciado")
+  return await runner.run(config)
+})
+
 
 ipcMain.handle("runner:login", async (_, payload) => {
   const result = await runner.login(payload);

@@ -12,13 +12,23 @@ function initLogger() {
   logFile = path.join(logsDir, 'app.log')
 }
 
+function redactSecrets(msg) {
+  return String(msg)
+    .replace(/Bearer\s+[A-Za-z0-9\-._]+/g, 'Bearer [REDACTED]')
+    .replace(/bp_token\s*=\s*[^\s]+/gi, 'bp_token=[REDACTED]')
+    .replace(/bp_session_id\s*=\s*[^\s]+/gi, 'bp_session_id=[REDACTED]')
+}
+
+
 function logToFile(level, origin, message) {
   if (!logFile) return
 
   const env = app.isPackaged ? 'PROD' : 'DEV'
   const ts = new Date().toISOString().replace('T', ' ').split('.')[0]
 
-  const line = `${ts} [${env}] [${level.toUpperCase()}] [${origin}] ${message}\n`
+  const safeMessage = redactSecrets(message)
+
+  const line = `${ts} [${env}] [${level.toUpperCase()}] [${origin}] ${safeMessage}\n`
   fs.appendFileSync(logFile, line)
 }
 

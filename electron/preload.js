@@ -1,5 +1,7 @@
 const { contextBridge, ipcRenderer } = require('electron')
 
+const listeners = new Map()
+
 contextBridge.exposeInMainWorld('api', {
   login: (payload) => ipcRenderer.invoke('runner:login', payload),
   run: (config) => ipcRenderer.invoke('runner:run', config),
@@ -7,8 +9,18 @@ contextBridge.exposeInMainWorld('api', {
   getRunnerStatus: () => ipcRenderer.invoke('runner:status'),
   getLoginStatus: () => ipcRenderer.invoke('runner:loginStatus'),
 
-  onLog: (cb) => ipcRenderer.on('runner:log', (_, data) => cb(data)),
-  offLog: (cb) => ipcRenderer.removeListener('runner:log', cb),
+  onLog: (cb) => {
+    const wrapped = (_event, data) => cb(data)
+    listeners.set(cb, wrapped)
+    ipcRenderer.on('runner:log', wrapped)
+  },
+  offLog: (cb) => {
+    const wrapped = listeners.get(cb)
+    if (wrapped) {
+      ipcRenderer.removeListener('runner:log', wrapped)
+      listeners.delete(cb)
+    }
+  },
   
   loadConfig: () => ipcRenderer.invoke('config:load'),
   saveConfig: (config) => ipcRenderer.invoke('config:save', config)
