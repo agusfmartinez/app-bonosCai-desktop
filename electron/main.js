@@ -10,6 +10,7 @@ let runner;
 let devLoadRetries = 0;
 const MAX_DEV_RETRIES = 20;
 const DEV_RETRY_DELAY_MS = 500;
+let splash;
 
 process.on("uncaughtException", (err) => {
   logToFile("error", "MAIN", err.stack || err.message);
@@ -18,6 +19,21 @@ process.on("uncaughtException", (err) => {
 process.on("unhandledRejection", (reason) => {
   logToFile("error", "MAIN", String(reason));
 });
+
+function createSplash() {
+  splash = new BrowserWindow({
+    width: 420,
+    height: 280,
+    frame: false,
+    transparent: true,
+    alwaysOnTop: true,
+    resizable: false,
+    show: true,
+  });
+
+  splash.loadFile(path.join(__dirname, 'splash.html'));
+}
+
 
 function webContentLogs(win){
 
@@ -182,6 +198,13 @@ app.whenReady().then(() => {
   if (!process.env.BVIP_COOKIES_TTL) {
     process.env.BVIP_COOKIES_TTL = "10800";
   }
+  createSplash();
   createWindow();
+
+  win.once('ready-to-show', () => {
+    if (splash) splash.close();
+    win.show();
+  });
+  
   registerConfigIpc();
 });
