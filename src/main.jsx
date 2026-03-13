@@ -91,6 +91,7 @@ function useAuthGate() {
       setReady(true)
       if (expireTimerRef.current) clearTimeout(expireTimerRef.current)
       expireTimerRef.current = setTimeout(() => {
+        setExpired(false)
         navigate('/login', { replace: true })
       }, 1200)
       try {
