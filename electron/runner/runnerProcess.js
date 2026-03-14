@@ -106,6 +106,12 @@ process.on('message', async (msg) => {
             })
           }
         },
+        onPause: async () => {
+          process.send({ type: 'paused' })
+          while (!stopFlag) {
+            await new Promise((r) => setTimeout(r, 500))
+          }
+        },
         pushLog: (m) => {
           process.send({ type: 'log', payload: { level: 'info', message: m } })
         },

@@ -59,7 +59,7 @@ export default function App() {
   const navigate = useNavigate();
 
   const { status, error } = useRunnerStatus()
-  const isRunning = status === 'running' || status === 'stopping'
+  const isRunning = status === 'running' || status === 'stopping' || status === 'paused'
   const isDev = import.meta.env.DEV
   const [finalizePurchase, setFinalizePurchase] = useState(true)
 
@@ -161,9 +161,12 @@ export default function App() {
       if (isTest) {
         payload = {
           ...config,
+          email,
+          password,
+          finalizePurchase,
           simulateLocal: true,
           simulate: {
-            preFile: "prueba3.html", // pantalla “todavía no habilitado”
+            preFile: "prueba3.html", // pantalla ???todav??a no habilitado???
             liveFile: "prueba.html", // formulario habilitado
             confirmFile: "prueba2.html", // formulario confirmar 
             finalFile: "prueba4.html", // post-compra
