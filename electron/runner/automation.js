@@ -288,6 +288,7 @@ async function runAutomation({
   loginUrl,
   onCookies,
   finalizePurchase = true,
+  onPause,
 }) {
   if (!simulateLocal) {
     if (url) {
@@ -504,13 +505,16 @@ async function runAutomation({
     await page.fill(selDni, String(dni));
   }
 
-  if (!finalizePurchase) {
-    pushLog("⏸️ Modo prueba: se detiene antes de finalizar compra.");
-    return;
-  }
-
   // Continuar a pagina confirmacion
   await expectEnabledAndClick(page, "#buyButton", pushLog, true, 60000);
+
+    if (!finalizePurchase) {
+    pushLog("⏸️ Se detiene antes de finalizar compra.");
+    if (onPause) {
+      await onPause()
+    }
+    return;
+  }
 
   // Segunda página: TyC
   if (

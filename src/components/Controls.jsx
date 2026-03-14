@@ -11,7 +11,7 @@ export default function Controls({
   finalizePurchase = true,
   onToggleFinalize,
 }) {
-  const isRunning = status === 'running' || status === 'stopping'
+  const isRunning = status === 'running' || status === 'stopping' || status === 'paused'
 
   return (
     <section className={cardClass}>

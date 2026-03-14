@@ -24,6 +24,11 @@ class RunnerManager {
         this.onLog(msg.payload)
       }
 
+      if (msg.type === 'paused') {
+        this.state.set('paused')
+        this.onLog({ level: 'warning', message: 'Automatización pausada. Esperando acción del usuario.' })
+      }
+
       if (msg.type === 'login-result') {
         finish(msg.payload)
       }

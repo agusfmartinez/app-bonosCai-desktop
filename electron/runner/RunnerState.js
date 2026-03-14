@@ -1,6 +1,6 @@
 class RunnerState {
   constructor() {
-    this.status = 'idle' // idle | running | stopping | error | done
+    this.status = 'idle' // idle | running | stopping | paused | error | done
     this.error = null
   }
 
@@ -21,7 +21,7 @@ class RunnerState {
   }
 
   canStop() {
-    return this.status === 'running'
+    return this.status === 'running' || this.status === 'paused'
   }
 }
 
