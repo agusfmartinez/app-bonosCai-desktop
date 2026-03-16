@@ -28,16 +28,30 @@ export async function initBackendSession({ accessToken, endpoint = '/api/session
   if (!accessToken) {
     return { ok: false, status: 0, reason: 'missing-token', detail: 'Access token requerido' }
   }
+  if (inFlight) {
+    return { ok: false, status: 0, reason: 'in-flight' }
+  }
+  if (lastToken && lastToken === accessToken) {
+    return { ok: false, status: 0, reason: 'duplicate-token' }
+  }
+  inFlight = true
+  lastToken = accessToken
 
   const existing = localStorage.getItem(SESSION_ID_KEY) || null;
 
-  const response = await fetchWithAuth(endpoint, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      ...(existing ? { 'x-session-id': existing } : {}),
-    },
-  });
+  let response
+  try {
+    response = await fetchWithAuth(endpoint, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        ...(existing ? { 'x-session-id': existing } : {}),
+      },
+    });
+  } catch (error) {
+    inFlight = false
+    return { ok: false, status: 0, reason: 'network-error', detail: error?.message || String(error) }
+  }
 
   const rawBody = await response.text()
   let data = null
@@ -49,11 +63,13 @@ export async function initBackendSession({ accessToken, endpoint = '/api/session
 
   if (response.status === 403) {
     clearSession()
+    inFlight = false
     return { ok: false, status: 403, reason: 'forbidden', detail: data }
   }
 
   if (!response.ok) {
     clearSession()
+    inFlight = false
     return {
       ok: false,
       status: response.status,
@@ -65,9 +81,11 @@ export async function initBackendSession({ accessToken, endpoint = '/api/session
   const sessionId = data?.sessionId
   if (!sessionId) {
     clearSession()
+    inFlight = false
     return { ok: false, status: response.status, reason: 'invalid-payload', detail: data }
   }
 
   storeSession(accessToken, sessionId)
+  inFlight = false
   return { ok: true, status: response.status, sessionId }
 }

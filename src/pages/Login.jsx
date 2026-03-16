@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
-import { initBackendSession } from '../lib/session'
 import { useNavigate, Link, useLocation } from 'react-router-dom'
 import { pageContainerClass, pageCardNarrowClass, inputClass, baseButtonClass } from '../styles/classes'
 export default function Login() {
@@ -77,31 +76,10 @@ export default function Login() {
     const { error } = await supabase.auth.verifyOtp({ email: emailClean, token: code, type: 'email' })
     if (error) { setVerifying(false); return setMsg(error.message) }
 
-    const { data: sess } = await supabase.auth.getSession()
-    const accessToken = sess?.session?.access_token
-    if (!accessToken) { setVerifying(false); return setMsg('No se obtuvo token') }
-
     try {
-      const result = await initBackendSession({ accessToken })
-      if (!result.ok) {
-        if (result.reason === 'forbidden') {
-          setMsg('Tu cuenta aun no esta habilitada.')
-          await supabase.auth.signOut()
-          navigate('/pending', { replace: true })
-        } else {
-          const detail = typeof result.detail === 'string' && result.detail ? ': ' + result.detail : ''
-          setMsg('Fallo inicio de sesion unica' + detail)
-          await supabase.auth.signOut()
-        }
-        return
-      }
       sessionStorage.removeItem('pendingEmail')
       sessionStorage.removeItem('otpSent')
-
       navigate('/')
-    } catch (err) {
-      setMsg('Fallo inicio de sesion unica: ' + err.message)
-      await supabase.auth.signOut()
     } finally {
       setVerifying(false)
     }
