@@ -4,3 +4,31 @@
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
 }
 
+/* Keep autofill styling consistent with the red UI theme */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+textarea:-webkit-autofill:hover,
+textarea:-webkit-autofill:focus,
+select:-webkit-autofill,
+select:-webkit-autofill:hover,
+select:-webkit-autofill:focus {
+  -webkit-text-fill-color: #ffffff;
+  caret-color: #ffffff;
+  background-color: rgba(69, 10, 10, 0.6);
+  border-color: #b91c1c;
+  box-shadow: 0 0 0px 1000px rgba(69, 10, 10, 0.6) inset;
+  transition: background-color 9999s ease-out;
+}
+
+input:autofill,
+textarea:autofill,
+select:autofill {
+  background-color: rgba(69, 10, 10, 0.6);
+  border-color: #b91c1c;
+  box-shadow: 0 0 0px 1000px rgba(69, 10, 10, 0.6) inset;
+  color: #ffffff;
+  caret-color: #ffffff;
+}
+
