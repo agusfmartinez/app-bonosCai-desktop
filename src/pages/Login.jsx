@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useNavigate, Link, useLocation } from 'react-router-dom'
 import { pageContainerClass, pageCardNarrowClass, inputClass, baseButtonClass } from '../styles/classes'
+
+const RECENT_EMAILS_KEY = 'bp_recent_emails'
+const MAX_RECENT_EMAILS = 6
 export default function Login() {
   const [email, setEmail] = useState('')
   const [otpSent, setOtpSent] = useState(false)
@@ -9,6 +12,7 @@ export default function Login() {
   const [sendingOtp, setSendingOtp] = useState(false)
   const [verifying, setVerifying] = useState(false)
   const [msg, setMsg] = useState('')
+  const [recentEmails, setRecentEmails] = useState([])
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -24,6 +28,38 @@ export default function Login() {
     if (pendingEmail) setEmail(pendingEmail)
     if (sessionStorage.getItem('otpSent') === '1') setOtpSent(true)
   }, [location.state])
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(RECENT_EMAILS_KEY)
+      const list = raw ? JSON.parse(raw) : []
+      if (Array.isArray(list)) setRecentEmails(list)
+    } catch {
+      // ignore
+    }
+  }, [])
+
+  const storeRecentEmail = (value) => {
+    const emailClean = String(value || '').trim().toLowerCase()
+    if (!emailClean) return
+    const current = Array.isArray(recentEmails) ? recentEmails : []
+    const next = [emailClean, ...current.filter((e) => e !== emailClean)].slice(0, MAX_RECENT_EMAILS)
+    setRecentEmails(next)
+    try {
+      localStorage.setItem(RECENT_EMAILS_KEY, JSON.stringify(next))
+    } catch {
+      // ignore
+    }
+  }
+
+  const clearRecentEmails = () => {
+    setRecentEmails([])
+    try {
+      localStorage.removeItem(RECENT_EMAILS_KEY)
+    } catch {
+      // ignore
+    }
+  }
 
 
   function mapOtpError(err) {
@@ -59,6 +95,7 @@ export default function Login() {
           return
         }
         setOtpSent(true)
+        storeRecentEmail(emailClean)
         setMsg('Te enviamos un codigo al mail.')
     } catch (error) {
         setMsg('Error de red. Intentá de nuevo.')
@@ -79,6 +116,7 @@ export default function Login() {
     try {
       sessionStorage.removeItem('pendingEmail')
       sessionStorage.removeItem('otpSent')
+      storeRecentEmail(emailClean)
       navigate('/')
     } finally {
       setVerifying(false)
@@ -95,17 +133,32 @@ export default function Login() {
           type="email"
           name="email"
           autoComplete="email"
+          list="recent-emails"
           placeholder="tu@email.com"
-          className={`${inputClass} mb-3`}
+          className={`${inputClass}`}
           value={email}
           onChange={e=>setEmail(e.target.value)}
         />
+        <datalist id="recent-emails">
+          {recentEmails.map((item) => (
+            <option key={item} value={item} />
+          ))}
+        </datalist>
+        {recentEmails.length > 0 && (
+          <button
+            type="button"
+            className="text-xs text-red-200 underline hover:text-white"
+            onClick={clearRecentEmails}
+          >
+            Borrar emails recientes
+          </button>
+        )}
         <input
           inputMode="numeric"
           pattern="[0-9]*"
           maxLength={6}
           placeholder="Codigo de 6 digitos"
-          className={`${inputClass} mb-3`}
+          className={`${inputClass} my-3`}
           value={code}
           onChange={e=>setCode(e.target.value.replace(/\D/g,'').slice(0,6))}
         />
