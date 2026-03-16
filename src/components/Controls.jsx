@@ -26,7 +26,15 @@ export default function Controls({
         <div className="flex flex-wrap items-center gap-3">
           {showTestToggle && (
             <label className="flex items-center gap-2 text-sm text-white">
-              <span>Finalizar compra</span>
+              <span className="inline-flex items-center gap-2">
+                Finalizar compra
+                <span
+                  className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-white/15 text-[10px] font-bold text-white/80"
+                  title="Si desactivás Finalizar compra, el bot completa el formulario y deja la confirmación final para que la hagas manualmente."
+                >
+                  ?
+                </span>
+              </span>
               <button
                 type="button"
                 onClick={() => onToggleFinalize && onToggleFinalize(!finalizePurchase)}

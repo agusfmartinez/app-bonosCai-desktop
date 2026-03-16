@@ -193,11 +193,16 @@ function useAuthGate() {
     })()
 
     return () => {
-      if (expireTimerRef.current) clearTimeout(expireTimerRef.current)
       subscription.unsubscribe()
       cleanupChannel()
     }
   }, [navigate, bootstrapped, location.pathname, expired])
+
+  useEffect(() => {
+    return () => {
+      if (expireTimerRef.current) clearTimeout(expireTimerRef.current)
+    }
+  }, [])
 
   return { ready, allowed, expired };
 }
