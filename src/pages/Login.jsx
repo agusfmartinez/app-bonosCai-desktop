@@ -115,6 +115,8 @@ export default function Login() {
 
         <input
           type="email"
+          name="email"
+          autoComplete="email"
           placeholder="tu@email.com"
           className={`${inputClass} mb-3`}
           value={email}
