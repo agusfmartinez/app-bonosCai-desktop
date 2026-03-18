@@ -161,7 +161,7 @@ function useAuthGate() {
             await handleExpiredSession()
             return
           }
-          if (result.reason !== 'in-flight' && result.reason !== 'duplicate-token') {
+          if (result.reason !== 'in-flight') {
             await handleInitFailure(result)
           }
           return
@@ -202,7 +202,7 @@ function useAuthGate() {
               await handleExpiredSession()
               return
             }
-            if (result.reason !== 'in-flight' && result.reason !== 'duplicate-token') {
+            if (result.reason !== 'in-flight') {
               await handleInitFailure(result);
             }
             return;

@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld('api', {
   stop: () => ipcRenderer.invoke('runner:stop'),
   getRunnerStatus: () => ipcRenderer.invoke('runner:status'),
   getLoginStatus: () => ipcRenderer.invoke('runner:loginStatus'),
+  getAppInfo: () => ipcRenderer.invoke('app:info'),
 
   onLog: (cb) => {
     const wrapped = (_event, data) => cb(data)
