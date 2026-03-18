@@ -1,5 +1,6 @@
 const { app, BrowserWindow, ipcMain, Menu } = require("electron");
 const path = require("path");
+const os = require("os");
 const { initLogger, logToFile } = require("./logger");
 const RunnerManager = require("./runner/RunnerManager");
 const { registerConfigIpc } = require("./ipc/config.ipc");
@@ -185,6 +186,20 @@ ipcMain.handle('runner:loginStatus', () => {
     return { ok: hasSession, eventUrl: data?.eventUrl || null }
   } catch {
     return { ok: false, reason: 'error' }
+  }
+})
+
+ipcMain.handle('app:info', () => {
+  const platform = process.platform
+  let normalized = platform
+  if (platform === 'win32') normalized = 'windows'
+  else if (platform === 'darwin') normalized = 'macos'
+  else if (platform === 'linux') normalized = 'linux'
+
+  return {
+    appVersion: app.getVersion(),
+    deviceName: os.hostname(),
+    os: normalized,
   }
 })
 

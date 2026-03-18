@@ -5,7 +5,7 @@ import { fetchWithAuth } from './api'
 const TOKEN_KEY = 'bp_token'
 const SESSION_ID_KEY = 'bp_session_id'
 
-let inFlight = false; let lastToken = null;
+let inFlight = false;
 
 export function getStoredSession() {
   const token = localStorage.getItem(TOKEN_KEY) || null
@@ -24,29 +24,42 @@ export function clearSession() {
   localStorage.removeItem(SESSION_ID_KEY)
 }
 
-export async function initBackendSession({ accessToken, endpoint = '/api/session/init' } = {}) {
+export async function initBackendSession({ accessToken, endpoint = '/api/session/init', appInfo = null } = {}) {
   if (!accessToken) {
     return { ok: false, status: 0, reason: 'missing-token', detail: 'Access token requerido' }
   }
   if (inFlight) {
     return { ok: false, status: 0, reason: 'in-flight' }
   }
-  if (lastToken && lastToken === accessToken) {
-    return { ok: false, status: 0, reason: 'duplicate-token' }
-  }
   inFlight = true
-  lastToken = accessToken
 
   const existing = localStorage.getItem(SESSION_ID_KEY) || null;
 
   let response
   try {
+    if (!appInfo && typeof window !== 'undefined' && window.api?.getAppInfo) {
+      try {
+        appInfo = await window.api.getAppInfo()
+      } catch {
+        appInfo = null
+      }
+    }
+
+    const payload = appInfo && typeof appInfo === 'object'
+      ? {
+          appVersion: appInfo.appVersion,
+          deviceName: appInfo.deviceName,
+          os: appInfo.os,
+        }
+      : {}
+
     response = await fetchWithAuth(endpoint, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${accessToken}`,
         ...(existing ? { 'x-session-id': existing } : {}),
       },
+      body: JSON.stringify(payload),
     });
   } catch (error) {
     inFlight = false
