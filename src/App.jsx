@@ -8,6 +8,7 @@ import { useNavigate } from "react-router-dom";
 
 import { supabase } from "./lib/supabase";
 import { clearSession } from "./lib/session";
+import { startRun, finishRun } from "./lib/runs";
 
 import { useRunnerStatus } from './hooks/useRunnerStatus'
 
@@ -26,6 +27,9 @@ const EMPTY_CONFIG = {
   horaHabilitacion: "",
   personas: [{ socio: "", dni: "" }],
 };
+
+const RUN_ID_STORAGE_KEY = 'bp_current_run_id'
+const RUN_STOP_STORAGE_KEY = 'bp_current_run_stopped'
 
 const normalizeConfig = (cfg) => {
   if (!cfg) return null;
@@ -62,6 +66,25 @@ export default function App() {
   const isRunning = status === 'running' || status === 'stopping' || status === 'paused'
   const isDev = import.meta.env.DEV
   const [finalizePurchase, setFinalizePurchase] = useState(true)
+  const activeRunIdRef = useRef(null)
+  const lastStatusRef = useRef(null)
+  const stopRequestedRef = useRef(false)
+
+  const persistRunId = (runId) => {
+    if (!runId) return
+    localStorage.setItem(RUN_ID_STORAGE_KEY, runId)
+    localStorage.setItem(RUN_STOP_STORAGE_KEY, '0')
+  }
+
+  const markRunStopped = () => {
+    stopRequestedRef.current = true
+    localStorage.setItem(RUN_STOP_STORAGE_KEY, '1')
+  }
+
+  const clearPersistedRun = () => {
+    localStorage.removeItem(RUN_ID_STORAGE_KEY)
+    localStorage.removeItem(RUN_STOP_STORAGE_KEY)
+  }
 
   // Carga inicial
   useEffect(() => {
@@ -101,6 +124,59 @@ export default function App() {
     checkLogin()
     return () => { mounted = false }
   }, [config.url])
+
+  useEffect(() => {
+    const storedRunId = localStorage.getItem(RUN_ID_STORAGE_KEY)
+    if (!storedRunId || activeRunIdRef.current) return
+
+    if (status === 'running' || status === 'paused' || status === 'stopping') {
+      activeRunIdRef.current = storedRunId
+      const stopped = localStorage.getItem(RUN_STOP_STORAGE_KEY) === '1'
+      stopRequestedRef.current = stopped
+      return
+    }
+
+    if (status === 'done' || status === 'error' || status === 'idle') {
+      const stopped = localStorage.getItem(RUN_STOP_STORAGE_KEY) === '1'
+      const finalStatus = status === 'error' || stopped ? 'error' : 'success'
+      const message =
+        status === 'error'
+          ? error || 'Error en ejecución'
+          : stopped
+            ? 'Cancelado por usuario'
+            : null
+      finishRun(storedRunId, finalStatus, message)
+      clearPersistedRun()
+    }
+  }, [status, error])
+
+  useEffect(() => {
+    if (!activeRunIdRef.current) {
+      lastStatusRef.current = status
+      return
+    }
+    if (lastStatusRef.current === status) return
+
+    if (status === 'done' || status === 'error') {
+      const runId = activeRunIdRef.current
+      activeRunIdRef.current = null
+
+      const wasStopped = stopRequestedRef.current
+      const finalStatus = status === 'error' || wasStopped ? 'error' : 'success'
+      const message =
+        status === 'error'
+          ? error || 'Error en ejecución'
+          : wasStopped
+            ? 'Cancelado por usuario'
+            : null
+
+      finishRun(runId, finalStatus, message)
+      clearPersistedRun()
+      stopRequestedRef.current = false
+    }
+
+    lastStatusRef.current = status
+  }, [status, error])
 
   // SSE 
   useEffect(() => {
@@ -154,6 +230,15 @@ export default function App() {
 
   const handleRun = async (isTest = false) => {
     try {
+      stopRequestedRef.current = false
+      const start = await startRun()
+      if (start.ok && start.runId) {
+        activeRunIdRef.current = start.runId
+        persistRunId(start.runId)
+      } else {
+        setLogs(prev => [...prev, { level: 'warning', message: 'No se pudo iniciar tracking de ejecución.' }])
+      }
+
       // payload normal por defecto
       let payload = { ...config, email, password, finalizePurchase };
 
@@ -179,11 +264,18 @@ export default function App() {
       if (!res.ok) throw new Error(res.msg || 'No se pudo iniciar')
 
     } catch (e) {
+      if (activeRunIdRef.current) {
+        const runId = activeRunIdRef.current
+        activeRunIdRef.current = null
+        await finishRun(runId, 'error', e.message || String(e))
+        clearPersistedRun()
+      }
       setLogs(prev => [...prev, { level: 'error', message: e.message }])
     } 
   };
 
   const handleStop = async () => {
+    markRunStopped()
     await window.api.stop();
   };
 
