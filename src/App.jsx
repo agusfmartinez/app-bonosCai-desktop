@@ -26,7 +26,7 @@ const EMPTY_CONFIG = {
   sectorName: "",
   cantidad: 1,
   horaHabilitacion: "",
-  personas: [{ socio: "", dni: "" }],
+  personas: [{ socio: "", dni: "", enabled: true }],
 };
 
 const RUN_ID_STORAGE_KEY = 'bp_current_run_id'
@@ -38,15 +38,22 @@ const normalizeConfig = (cfg) => {
   const sector = validValues.has(cfg.sector) ? cfg.sector : "";
   const found = SECTORES.find((s) => s.value === sector);
 
+  const rawPersonas = Array.isArray(cfg.personas) ? cfg.personas : []
+  const normalizedPersonas = rawPersonas.length
+    ? rawPersonas.map((p) => ({
+        socio: p?.socio || "",
+        dni: p?.dni || "",
+        enabled: p?.enabled !== false,
+      }))
+    : [{ socio: "", dni: "", enabled: true }]
+
   return {
     url: cfg.url || "",
     sector,
     sectorName: found ? found.label : "",
     cantidad: Number(cfg.cantidad) || 1,
     horaHabilitacion: cfg.horaHabilitacion || "",
-    personas: Array.isArray(cfg.personas) && cfg.personas.length
-      ? cfg.personas
-      : [{ socio: "", dni: "" }],
+    personas: normalizedPersonas,
   };
 };
 
@@ -255,13 +262,16 @@ export default function App() {
         setLogs(prev => [...prev, { level: 'warning', message: 'No se pudo iniciar tracking de ejecución.' }])
       }
 
+      const enabledPersonas = (config.personas || []).filter((p) => p?.enabled !== false)
+      const finalConfig = { ...config, personas: enabledPersonas, cantidad: enabledPersonas.length }
+
       // payload normal por defecto
-      let payload = { ...config, email, password, finalizePurchase };
+      let payload = { ...finalConfig, email, password, finalizePurchase };
 
       // si es test, agregamos flags para backend (sin romper el formato original)
       if (isTest) {
         payload = {
-          ...config,
+          ...finalConfig,
           email,
           password,
           finalizePurchase,
@@ -299,7 +309,7 @@ export default function App() {
   const addPersona = () => {
     if (!editMode || isRunning) return
     if (config.personas.length >= 6) return
-    const personas = [...config.personas, { socio: "", dni: "" }]
+    const personas = [...config.personas, { socio: "", dni: "", enabled: true }]
     setConfig((c) => ({ ...c, personas, cantidad: personas.length }))
   }
 
@@ -307,6 +317,14 @@ export default function App() {
     if (!editMode || isRunning) return
     if (config.personas.length <= 1) return
     const personas = config.personas.filter((_, i) => i !== idx)
+    setConfig((c) => ({ ...c, personas, cantidad: personas.length }))
+  }
+
+  const togglePersona = (idx) => {
+    if (!editMode || isRunning) return
+    const personas = config.personas.map((p, i) => (
+      i === idx ? { ...p, enabled: p.enabled === false ? true : false } : p
+    ))
     setConfig((c) => ({ ...c, personas, cantidad: personas.length }))
   }
 
@@ -502,6 +520,7 @@ export default function App() {
           onChange={(personas) => setConfig({ ...config, personas, cantidad: personas.length })}
           onAdd={addPersona}
           onRemove={removePersona}
+          onToggleEnabled={togglePersona}
           disabled={!editMode || isRunning}
           canAdd={config.personas.length < 6}
           canRemove={config.personas.length > 1}
