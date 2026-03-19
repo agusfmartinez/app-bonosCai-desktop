@@ -1,8 +1,7 @@
 import React from 'react'
-import { cardClass, inputClass } from '../styles/classes'
+import { cardClass, inputClass, loginButtonClass } from '../styles/classes'
 
-
-export default function PersonasForm({ personas, onChange, disabled }) {
+export default function PersonasForm({ personas, onChange, onAdd, onRemove, disabled, canAdd, canRemove }) {
   const update = (idx, field, value) => {
     if (disabled) return
     const next = personas.map((p, i) => (i === idx ? { ...p, [field]: value } : p))
@@ -24,9 +23,28 @@ export default function PersonasForm({ personas, onChange, disabled }) {
             key={i}
             className="rounded-lg border border-red-800 bg-red-950/40 p-4 shadow-sm shadow-red-950/20"
           >
-            <p className="text-xs font-semibold uppercase tracking-wide text-white">
-              Persona #{i + 1}
-            </p>
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold uppercase tracking-wide text-white">
+                Persona #{i + 1}
+              </p>
+              <button
+                type="button"
+                className="text-xs text-red-200 hover:text-white"
+                onClick={() => onRemove?.(i)}
+                disabled={disabled || !canRemove}
+                aria-label={`Quitar persona ${i + 1}`}
+                title="Quitar"
+              >
+                <svg className="h-4 w-4" 
+                  viewBox="0 0 24 24" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  strokeWidth="2" 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round" 
+                  aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+              </button>
+            </div>
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <label className="flex flex-col gap-2 text-sm font-medium text-white">
                 <span className="text-xs uppercase tracking-wide text-white">Socio</span>
@@ -53,6 +71,25 @@ export default function PersonasForm({ personas, onChange, disabled }) {
             </div>
           </div>
         ))}
+      </div>
+      <div className="mt-5 flex justify-center">
+        <button
+          type="button"
+          className={loginButtonClass}
+          onClick={onAdd}
+          disabled={disabled || !canAdd}
+          title="Agregar persona"
+          aria-label="Agregar persona"
+        >
+          <svg className="h-4 w-4" 
+            viewBox="0 0 24 24" 
+            fill="none" 
+            stroke="currentColor" 
+            strokeWidth="2" 
+            strokeLinecap="round" 
+            strokeLinejoin="round" 
+            aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+        </button>
       </div>
     </section>
   )

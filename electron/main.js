@@ -3,7 +3,6 @@ const path = require("path");
 const os = require("os");
 const { initLogger, logToFile } = require("./logger");
 const RunnerManager = require("./runner/RunnerManager");
-const { registerConfigIpc } = require("./ipc/config.ipc");
 const fs = require("fs");
 
 let win;
@@ -221,5 +220,4 @@ app.whenReady().then(() => {
     win.show();
   });
   
-  registerConfigIpc();
 });
