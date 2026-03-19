@@ -9,6 +9,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "./lib/supabase";
 import { clearSession } from "./lib/session";
 import { startRun, finishRun } from "./lib/runs";
+import { getConfig, saveConfig } from "./lib/config";
 
 import { useRunnerStatus } from './hooks/useRunnerStatus'
 
@@ -59,6 +60,7 @@ export default function App() {
   const [password, setPassword] = useState("");
 
   const [config, setConfig] = useState(() => EMPTY_CONFIG);
+  const [configLoading, setConfigLoading] = useState(true)
 
   const navigate = useNavigate();
 
@@ -91,14 +93,22 @@ export default function App() {
     let cancelled = false;
 
     const loadConfig = async () => {
-      const local = await window.api.loadConfig()
-      if (local && !cancelled) {
-        const normalized = normalizeConfig(local)
-        const cached = JSON.parse(localStorage.getItem("bonosConfig") || "null")
-        if (cached?.url && !normalized?.url) {
-          normalized.url = cached.url
+      try {
+        const res = await getConfig()
+        if (cancelled) return
+        if (res.ok && res.lastConfig) {
+          setConfig(normalizeConfig(res.lastConfig))
+        } else {
+          setConfig(EMPTY_CONFIG)
+          if (!res.ok) {
+            setLogs((prev) => [
+              ...prev,
+              { level: "error", message: "No se pudo cargar la configuración." },
+            ])
+          }
         }
-        setConfig(normalizeConfig(normalized))
+      } finally {
+        if (!cancelled) setConfigLoading(false)
       }
     };
 
@@ -193,9 +203,19 @@ export default function App() {
 
 
   const guardarConfig = async () => {
-    await window.api.saveConfig(config)
-    localStorage.setItem("bonosConfig", JSON.stringify(config))
-    setEditMode(false)
+    const result = await saveConfig(config)
+    if (result.ok) {
+      setEditMode(false)
+      setLogs((prev) => [
+        ...prev,
+        { level: "success", message: "Configuración guardada." },
+      ])
+    } else {
+      setLogs((prev) => [
+        ...prev,
+        { level: "error", message: "No se pudo guardar la configuración." },
+      ])
+    }
   };
 
 
@@ -209,11 +229,7 @@ export default function App() {
       const result = await window.api.login({ email, password })
       if (!result?.ok) throw new Error(result?.error || "Fallo login")
       if (result?.eventUrl) {
-        setConfig((prev) => {
-          const updated = { ...prev, url: result.eventUrl }
-          localStorage.setItem("bonosConfig", JSON.stringify(updated))
-          return updated
-        });
+        setConfig((prev) => ({ ...prev, url: result.eventUrl }));
       }
       setIsLogged(true);
       setLogs((prev) => [
@@ -280,13 +296,19 @@ export default function App() {
   };
 
   // helpers
-  const setCantidad = (n) => {
-    const cantidad = Number(n);
-    const personas = [...config.personas];
-    while (personas.length < cantidad) personas.push({ socio: "", dni: "" });
-    while (personas.length > cantidad) personas.pop();
-    setConfig((c) => ({ ...c, cantidad, personas }));
-  };
+  const addPersona = () => {
+    if (!editMode || isRunning) return
+    if (config.personas.length >= 6) return
+    const personas = [...config.personas, { socio: "", dni: "" }]
+    setConfig((c) => ({ ...c, personas, cantidad: personas.length }))
+  }
+
+  const removePersona = (idx) => {
+    if (!editMode || isRunning) return
+    if (config.personas.length <= 1) return
+    const personas = config.personas.filter((_, i) => i !== idx)
+    setConfig((c) => ({ ...c, personas, cantidad: personas.length }))
+  }
 
   const statusChipClass = `inline-flex items-center gap-2 rounded-full px-4 py-1 text-xs font-semibold uppercase tracking-wide ${
     isLogged
@@ -370,6 +392,12 @@ export default function App() {
           />
         </section>
 
+        {configLoading ? (
+          <section className={cardClass}>
+            <p className="text-sm text-white">Cargando configuración...</p>
+          </section>
+        ) : (
+          <>
         <section className={cardClass}>
           <div className="flex items-center gap-4">
             <div className="flex-wrap">
@@ -452,26 +480,6 @@ export default function App() {
                 ))}
               </select>
             </label>
-
-            {/* SELECT de Cantidad 1..6 */}
-            <label className="flex flex-col gap-2 text-sm font-medium text-white">
-              <span className="text-xs uppercase tracking-wide text-white">
-                Cantidad
-              </span>
-              <select
-                className={inputClass}
-                value={config.cantidad}
-                onChange={(e) => setCantidad(e.target.value)}
-                disabled={!editMode || isRunning}
-              >
-                {[1, 2, 3, 4, 5, 6].map((n) => (
-                  <option key={n} value={n}>
-                    {n} {n === 1 ? "persona" : "personas"}
-                  </option>
-                ))}
-              </select>
-            </label>
-
             <label className="flex flex-col gap-2 text-sm font-medium text-white">
               <span className="text-xs uppercase tracking-wide text-white">
                 Hora habilitación (HH:MM:SS)
@@ -491,9 +499,16 @@ export default function App() {
 
         <PersonasForm
           personas={config.personas}
-          onChange={(personas) => setConfig({ ...config, personas })}
+          onChange={(personas) => setConfig({ ...config, personas, cantidad: personas.length })}
+          onAdd={addPersona}
+          onRemove={removePersona}
           disabled={!editMode || isRunning}
+          canAdd={config.personas.length < 6}
+          canRemove={config.personas.length > 1}
         />
+
+          </>
+        )}
 
         <Controls
           status={status}

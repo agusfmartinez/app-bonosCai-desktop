@@ -23,6 +23,4 @@ contextBridge.exposeInMainWorld('api', {
     }
   },
   
-  loadConfig: () => ipcRenderer.invoke('config:load'),
-  saveConfig: (config) => ipcRenderer.invoke('config:save', config)
 })
