@@ -10,6 +10,7 @@ export default function PersonasForm({
   disabled,
   canAdd,
   canRemove,
+  editMode,
 }) {
   const update = (idx, field, value) => {
     if (disabled) return
@@ -25,6 +26,15 @@ export default function PersonasForm({
       <div className="flex items-baseline justify-between gap-4">
         <h2 className="text-lg font-semibold text-white">Personas</h2>
         <div className="flex items-center gap-3">
+          <span
+            className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide ${
+              editMode
+                ? "bg-sky-500/15 text-sky-200"
+                : "bg-red-700/40 text-white"
+            }`}
+          >
+            {editMode ? "Edición habilitada" : "Edición bloqueada"}
+          </span>
           <span className="text-xs uppercase tracking-wide text-white">{enabledCount} cupos</span>
           <span className="text-xs uppercase tracking-wide text-white/70">{disabledCount} deshabilitados</span>
         </div>

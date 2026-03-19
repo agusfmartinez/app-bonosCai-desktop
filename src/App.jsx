@@ -524,6 +524,7 @@ export default function App() {
           disabled={!editMode || isRunning}
           canAdd={config.personas.length < 6}
           canRemove={config.personas.length > 1}
+          editMode={editMode}
         />
 
           </>
