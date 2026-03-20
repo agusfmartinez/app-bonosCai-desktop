@@ -150,7 +150,7 @@ class RunnerManager {
     this.attachChildHandlers()
 
     this.child.send({ type: 'run', payload: config })
-    return { ok: true }
+    return { ok: true, runId }
   }
 
   login(config) {

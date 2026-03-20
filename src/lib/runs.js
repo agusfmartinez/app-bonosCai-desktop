@@ -3,11 +3,11 @@ import { fetchWithAuth } from './api'
 
 const MAX_ERROR_LEN = 1000
 
-export async function startRun() {
+export async function startRun(clientRunId = null) {
   try {
     const res = await fetchWithAuth('/api/runs/start', {
       method: 'POST',
-      body: JSON.stringify({}),
+      body: JSON.stringify(clientRunId ? { client_run_id: clientRunId } : {}),
     })
     const data = await res.json().catch(() => null)
     if (!res.ok) {
@@ -19,7 +19,7 @@ export async function startRun() {
   }
 }
 
-export async function finishRun(runId, status, errorMessage = null) {
+export async function finishRun(runId, status, errorMessage = null, clientRunId = null) {
   if (!runId) return { ok: false, status: 0, reason: 'missing-runId' }
   const err =
     typeof errorMessage === 'string' && errorMessage
@@ -32,6 +32,7 @@ export async function finishRun(runId, status, errorMessage = null) {
         runId,
         status,
         ...(err ? { error: err } : {}),
+        ...(clientRunId ? { client_run_id: clientRunId } : {}),
       }),
     })
     const data = await res.json().catch(() => null)
