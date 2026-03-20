@@ -30,6 +30,7 @@ const EMPTY_CONFIG = {
 };
 
 const RUN_ID_STORAGE_KEY = 'bp_current_run_id'
+const RUN_CLIENT_ID_STORAGE_KEY = 'bp_current_client_run_id'
 const RUN_STOP_STORAGE_KEY = 'bp_current_run_stopped'
 
 const normalizeConfig = (cfg) => {
@@ -76,12 +77,13 @@ export default function App() {
   const isDev = import.meta.env.DEV
   const [finalizePurchase, setFinalizePurchase] = useState(true)
   const activeRunIdRef = useRef(null)
+  const clientRunIdRef = useRef(null)
   const lastStatusRef = useRef(null)
   const stopRequestedRef = useRef(false)
 
-  const persistRunId = (runId) => {
-    if (!runId) return
-    localStorage.setItem(RUN_ID_STORAGE_KEY, runId)
+  const persistRunId = (runId, clientRunId) => {
+    if (runId) localStorage.setItem(RUN_ID_STORAGE_KEY, runId)
+    if (clientRunId) localStorage.setItem(RUN_CLIENT_ID_STORAGE_KEY, clientRunId)
     localStorage.setItem(RUN_STOP_STORAGE_KEY, '0')
   }
 
@@ -92,6 +94,7 @@ export default function App() {
 
   const clearPersistedRun = () => {
     localStorage.removeItem(RUN_ID_STORAGE_KEY)
+    localStorage.removeItem(RUN_CLIENT_ID_STORAGE_KEY)
     localStorage.removeItem(RUN_STOP_STORAGE_KEY)
   }
 
@@ -144,10 +147,12 @@ export default function App() {
 
   useEffect(() => {
     const storedRunId = localStorage.getItem(RUN_ID_STORAGE_KEY)
+    const storedClientRunId = localStorage.getItem(RUN_CLIENT_ID_STORAGE_KEY)
     if (!storedRunId || activeRunIdRef.current) return
 
     if (status === 'running' || status === 'paused' || status === 'stopping') {
       activeRunIdRef.current = storedRunId
+      clientRunIdRef.current = storedClientRunId || null
       const stopped = localStorage.getItem(RUN_STOP_STORAGE_KEY) === '1'
       stopRequestedRef.current = stopped
       return
@@ -162,7 +167,7 @@ export default function App() {
           : stopped
             ? 'Cancelado por usuario'
             : null
-      finishRun(storedRunId, finalStatus, message)
+      finishRun(storedRunId, finalStatus, message, storedClientRunId)
       clearPersistedRun()
     }
   }, [status, error])
@@ -176,7 +181,9 @@ export default function App() {
 
     if (status === 'done' || status === 'error') {
       const runId = activeRunIdRef.current
+      const clientRunId = clientRunIdRef.current
       activeRunIdRef.current = null
+      clientRunIdRef.current = null
 
       const wasStopped = stopRequestedRef.current
       const finalStatus = status === 'error' || wasStopped ? 'error' : 'success'
@@ -187,7 +194,7 @@ export default function App() {
             ? 'Cancelado por usuario'
             : null
 
-      finishRun(runId, finalStatus, message)
+      finishRun(runId, finalStatus, message, clientRunId)
       clearPersistedRun()
       stopRequestedRef.current = false
     }
@@ -254,13 +261,6 @@ export default function App() {
   const handleRun = async (isTest = false) => {
     try {
       stopRequestedRef.current = false
-      const start = await startRun()
-      if (start.ok && start.runId) {
-        activeRunIdRef.current = start.runId
-        persistRunId(start.runId)
-      } else {
-        setLogs(prev => [...prev, { level: 'warning', message: 'No se pudo iniciar tracking de ejecución.' }])
-      }
 
       const enabledPersonas = (config.personas || []).filter((p) => p?.enabled !== false)
       const finalConfig = { ...config, personas: enabledPersonas, cantidad: enabledPersonas.length }
@@ -277,7 +277,7 @@ export default function App() {
           finalizePurchase,
           simulateLocal: true,
           simulate: {
-            preFile: "prueba3.html", // pantalla ???todav??a no habilitado???
+            preFile: "prueba3.html", // pantalla ???todav?a no habilitado???
             liveFile: "prueba.html", // formulario habilitado
             confirmFile: "prueba2.html", // formulario confirmar 
             finalFile: "prueba4.html", // post-compra
@@ -289,11 +289,26 @@ export default function App() {
       const res = await window.api.run(payload);
       if (!res.ok) throw new Error(res.msg || 'No se pudo iniciar')
 
+      const clientRunId = res.runId || null
+      if (clientRunId) {
+        clientRunIdRef.current = clientRunId
+      }
+
+      const start = await startRun(clientRunId)
+      if (start.ok && start.runId) {
+        activeRunIdRef.current = start.runId
+        persistRunId(start.runId, clientRunId)
+      } else {
+        setLogs(prev => [...prev, { level: 'warning', message: 'No se pudo iniciar tracking de ejecuci?n.' }])
+      }
+
     } catch (e) {
       if (activeRunIdRef.current) {
         const runId = activeRunIdRef.current
+        const clientRunId = clientRunIdRef.current
         activeRunIdRef.current = null
-        await finishRun(runId, 'error', e.message || String(e))
+        clientRunIdRef.current = null
+        await finishRun(runId, 'error', e.message || String(e), clientRunId)
         clearPersistedRun()
       }
       setLogs(prev => [...prev, { level: 'error', message: e.message }])
