@@ -1,7 +1,7 @@
 const { app, BrowserWindow, ipcMain, Menu } = require("electron");
 const path = require("path");
 const os = require("os");
-const { initLogger, logToFile } = require("./logger");
+const { initLogger, createLogger } = require("./logger");
 const RunnerManager = require("./runner/RunnerManager");
 const fs = require("fs");
 
@@ -11,13 +11,48 @@ let devLoadRetries = 0;
 const MAX_DEV_RETRIES = 20;
 const DEV_RETRY_DELAY_MS = 500;
 let splash;
+let appLogger;
+let ipcLogger;
+let securityLogger;
+let rendererLogger;
+let runnerLogger;
+
+function logWith(logger, fallbackScope, level, message, meta) {
+  if (logger && typeof logger[level] === 'function') {
+    return logger[level](message, meta)
+  }
+  const line = `[${fallbackScope}] ${message}`
+  if (level === 'error') return console.error(line)
+  if (level === 'warning' || level === 'warn') return console.warn(line)
+  return console.log(line)
+}
+
+function logMain(level, message, meta) {
+  return logWith(appLogger, "MAIN", level, message, meta)
+}
+
+function logIpc(level, message, meta) {
+  return logWith(ipcLogger, "IPC", level, message, meta)
+}
+
+function logSecurity(level, message, meta) {
+  return logWith(securityLogger, "SECURITY", level, message, meta)
+}
+
+function logRenderer(level, message, meta) {
+  return logWith(rendererLogger, "RENDERER", level, message, meta)
+}
+
+function logRunner(level, message, meta) {
+  return logWith(runnerLogger, "RUNNER", level, message, meta)
+}
 
 process.on("uncaughtException", (err) => {
-  logToFile("error", "MAIN", err.stack || err.message);
+  logMain("error", err.stack || err.message);
 });
 
 process.on("unhandledRejection", (reason) => {
-  logToFile("error", "MAIN", String(reason));
+  logMain("error", String(reason));
 });
 
 function createSplash() {
@@ -38,29 +73,29 @@ function createSplash() {
 function webContentLogs(win){
 
   win.webContents.on('did-finish-load', () => {
-    logToFile('info', 'MAIN', `Renderer cargado: ${win.webContents.getURL()}`)
+    logMain('info', `Renderer cargado: ${win.webContents.getURL()}`)
   });
 
   win.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
-    logToFile('error', 'MAIN', `Fallo carga renderer ${errorCode} ${errorDescription} url=${validatedURL}`)
+    logMain('error', `Fallo carga renderer ${errorCode} ${errorDescription} url=${validatedURL}`)
     const isDevUrl = validatedURL && validatedURL.startsWith('http://localhost:5173');
     if (!app.isPackaged && isDevUrl && errorCode === -102 && devLoadRetries < MAX_DEV_RETRIES) {
       devLoadRetries += 1;
       setTimeout(() => {
-        logToFile('info', 'MAIN', `Reintentando carga dev (${devLoadRetries}/${MAX_DEV_RETRIES})`);
+        logMain('info', `Reintentando carga dev (${devLoadRetries}/${MAX_DEV_RETRIES})`);
         win.loadURL('http://localhost:5173');
       }, DEV_RETRY_DELAY_MS);
     }
   });
 
   win.webContents.on('render-process-gone', (_event, details) => {
-    logToFile('error', 'MAIN', `Renderer crash: reason=${details.reason} exitCode=${details.exitCode}`)
+    logMain('error', `Renderer crash: reason=${details.reason} exitCode=${details.exitCode}`)
   });
 
   // Captura errores de consola del renderer (incluye React)
   win.webContents.on('console-message', (_event, level, message, line, sourceId) => {
     if (level < 2) return
-    logToFile('info', 'RENDERER', `console level=${level} ${sourceId}:${line} ${message}`)
+    logRenderer('info', `console level=${level} ${sourceId}:${line} ${message}`)
   });
 }
 
@@ -82,7 +117,7 @@ function createWindow() {
   webContentLogs(win)
 
   win.webContents.setWindowOpenHandler(({ url }) => {
-    logToFile('warning', 'SECURITY', `Bloqueado window.open a: ${url}`)
+    logSecurity('warning', `Bloqueado window.open a: ${url}`)
     return { action: 'deny' }
   })
 
@@ -93,17 +128,16 @@ function createWindow() {
 
     if (!allowed) {
       event.preventDefault()
-      logToFile('warning', 'SECURITY', `Bloqueado navigate a: ${url}`)
+      logSecurity('warning', `Bloqueado navigate a: ${url}`)
     }
   })
 
   runner = new RunnerManager((log) => {
     win.webContents.send("runner:log", log);
-
-    logToFile(
+    logRunner(
       log.level || "info",
-      "RUNNER",
       log.message || JSON.stringify(log),
+      log.meta || {}
     );
   });
 
@@ -142,10 +176,10 @@ function validateRunConfig(cfg) {
 ipcMain.handle("runner:run", async (_, config) => {
   const v = validateRunConfig(config)
   if (!v.ok) {
-    logToFile('warning', 'IPC', `runner:run rechazado: ${v.msg}`)
+    logIpc('warning', `runner:run rechazado: ${v.msg}`)
     return { ok: false, msg: v.msg }
   }
-  logToFile("info", "IPC", "Runner iniciado")
+  logIpc("info", "Runner iniciado")
   return await runner.run(config)
 })
 
@@ -153,16 +187,16 @@ ipcMain.handle("runner:run", async (_, config) => {
 ipcMain.handle("runner:login", async (_, payload) => {
   const result = await runner.login(payload);
   if (result?.ok) {
-    logToFile("info", "IPC", "Login CAI iniciado");
+    logIpc("info", "Login CAI iniciado");
   } else {
-    logToFile("warning", "IPC", `Login CAI falló: ${result?.error || result?.reason || 'unknown'}`);
+    logIpc("warning", `Login CAI falló: ${result?.error || result?.reason || 'unknown'}`);
   }
   return result;
 });
 
 
 ipcMain.handle("runner:stop", async () => {
-  logToFile("warning", "IPC", "Runner detenido por usuario");
+  logIpc("warning", "Runner detenido por usuario");
   return await runner.stop();
 });
 
@@ -205,7 +239,12 @@ ipcMain.handle('app:info', () => {
 
 app.whenReady().then(() => {
   initLogger();
-  logToFile("info", "MAIN", "App iniciada");
+  appLogger = createLogger({ userId: '', file: 'app.log', scope: 'MAIN' })
+  ipcLogger = createLogger({ userId: '', file: 'app.log', scope: 'IPC' })
+  securityLogger = createLogger({ userId: '', file: 'app.log', scope: 'SECURITY' })
+  rendererLogger = createLogger({ userId: '', file: 'app.log', scope: 'RENDERER' })
+  runnerLogger = createLogger({ userId: '', file: 'runner.log', scope: 'RUNNER' })
+  appLogger.info("App iniciada");
   if (!process.env.BVIP_COOKIES_PATH) {
     process.env.BVIP_COOKIES_PATH = path.join(app.getPath("userData"), "cookies.json");
   }
