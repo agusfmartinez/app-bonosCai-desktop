@@ -1,4 +1,15 @@
+import { useEffect, useState } from "react";
+
 export default function Loading() {
+  const [secondsLeft, setSecondsLeft] = useState(60);
+
+  useEffect(() => {
+    if (secondsLeft <= 0) return;
+    const id = setTimeout(() => {
+      setSecondsLeft((s) => s - 1);
+    }, 1000);
+    return () => clearTimeout(id);
+  }, [secondsLeft]);
   return (
     <div className="min-h-screen bg-gradient-to-b from-red-800 via-red-900 to-red-950 text-white">
       <div className="mx-auto flex min-h-screen max-w-5xl flex-col items-center justify-center gap-6 px-6 py-12">
@@ -19,8 +30,11 @@ export default function Loading() {
 
           <button
             type="button"
-            className="mt-6 inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/20"
+            className={`mt-6 inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-white transition ${
+              secondsLeft > 0 ? "bg-white/5 opacity-60" : "bg-white/10 hover:bg-white/20"
+            }`}
             onClick={() => window.location.reload()}
+            disabled={secondsLeft > 0}
           >
             <svg
               className="h-4 w-4"
@@ -37,7 +51,7 @@ export default function Loading() {
               <path d="M3.51 9a9 9 0 0 1 14.13-3.36L23 10" />
               <path d="M20.49 15a9 9 0 0 1-14.13 3.36L1 14" />
             </svg>
-            Recargar
+            {secondsLeft > 0 ? `Recargar en ${secondsLeft}s` : "Recargar"}
           </button>
         </div>
       </div>
