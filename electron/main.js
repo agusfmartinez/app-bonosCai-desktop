@@ -2,6 +2,7 @@ const { app, BrowserWindow, ipcMain, Menu } = require("electron");
 const path = require("path");
 const os = require("os");
 const { initLogger, createLogger } = require("./logger");
+const { initCrashLogger, writeCrash } = require('./crashLogger')
 const RunnerManager = require("./runner/RunnerManager");
 const fs = require("fs");
 
@@ -48,10 +49,30 @@ function logRunner(level, message, meta) {
 }
 
 process.on("uncaughtException", (err) => {
+  const crash = {
+    timestamp: new Date().toISOString(),
+    type: "uncaughtException",
+    message: err.message,
+    stack: err.stack,
+    appVersion: app.getVersion(),
+    os: process.platform,
+  }
+
+  writeCrash(crash)
   logMain("error", err.stack || err.message);
 });
 
 process.on("unhandledRejection", (reason) => {
+  const crash = {
+    timestamp: new Date().toISOString(),
+    type: "unhandledRejection",
+    message: String(reason),
+    stack: reason?.stack || null,
+    appVersion: app.getVersion(),
+    os: process.platform,
+  }
+
+  writeCrash(crash)
   logMain("error", String(reason));
 });
 
@@ -239,6 +260,7 @@ ipcMain.handle('app:info', () => {
 
 app.whenReady().then(() => {
   initLogger();
+  initCrashLogger();
   appLogger = createLogger({ userId: '', file: 'app.log', scope: 'MAIN' })
   ipcLogger = createLogger({ userId: '', file: 'app.log', scope: 'IPC' })
   securityLogger = createLogger({ userId: '', file: 'app.log', scope: 'SECURITY' })
@@ -258,5 +280,7 @@ app.whenReady().then(() => {
     if (splash) splash.close();
     win.show();
   });
+
+  throw new Error("test crash")
   
 });
