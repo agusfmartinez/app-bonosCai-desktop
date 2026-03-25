@@ -12,6 +12,10 @@ contextBridge.exposeInMainWorld('api', {
 
   onLog: (cb) => {
     const wrapped = (_event, data) => cb(data)
+    const existing = listeners.get(cb)
+    if (existing) {
+      ipcRenderer.removeListener('runner:log', existing)
+    }
     listeners.set(cb, wrapped)
     ipcRenderer.on('runner:log', wrapped)
   },

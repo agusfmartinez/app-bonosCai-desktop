@@ -80,6 +80,7 @@ export default function App() {
   const clientRunIdRef = useRef(null)
   const lastStatusRef = useRef(null)
   const stopRequestedRef = useRef(false)
+  const lastLogRef = useRef({ key: null, ts: 0 })
 
   const persistRunId = (runId, clientRunId) => {
     if (runId) localStorage.setItem(RUN_ID_STORAGE_KEY, runId)
@@ -205,6 +206,12 @@ export default function App() {
   // SSE 
   useEffect(() => {
     const handler = (log) => {
+      const key = `${log?.level || 'info'}|${log?.message || ''}|${log?.meta?.runId || ''}`
+      const now = Date.now()
+      if (lastLogRef.current.key === key && now - lastLogRef.current.ts < 500) {
+        return
+      }
+      lastLogRef.current = { key, ts: now }
       setLogs((prev) => [...prev, log])
     }
 
