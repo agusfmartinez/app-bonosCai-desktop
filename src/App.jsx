@@ -266,14 +266,12 @@ export default function App() {
       const finalConfig = { ...config, personas: enabledPersonas, cantidad: enabledPersonas.length }
 
       // payload normal por defecto
-      let payload = { ...finalConfig, email, password, finalizePurchase };
+      let payload = { ...finalConfig, finalizePurchase };
 
       // si es test, agregamos flags para backend (sin romper el formato original)
       if (isTest) {
         payload = {
           ...finalConfig,
-          email,
-          password,
           finalizePurchase,
           simulateLocal: true,
           simulate: {

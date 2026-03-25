@@ -282,50 +282,14 @@ async function runAutomation({
   simulate = undefined, // 👈 nuevo { preFile, liveFile, finalFile, preMs }
   pushLog,
   shouldStop,
-  email,
-  password,
-  cookieName,
-  loginUrl,
-  onCookies,
   finalizePurchase = true,
   onPause,
 }) {
   if (!simulateLocal) {
-    if (url) {
-      await gotoWithLog(page, url, pushLog);
-    } else {
-      if (!loginUrl) {
-        throw new Error("LOGIN_URL requerido para iniciar el login");
-      }
-      const entryUrl = loginUrl;
-      await gotoWithLog(page, entryUrl, pushLog);
+    if (!url) {
+      throw new Error("URL requerida para iniciar la automatizaci?n");
     }
-    if (email && password) {
-      const loginRes = await loginProgrammatic({
-        page,
-        email,
-        password,
-        cookieName,
-        pushLog,
-      });
-      if (loginRes?.ok) {
-        if (onCookies) onCookies(loginRes.cookies || [], loginRes.eventUrl || null);
-        if (loginRes?.eventUrl) {
-          url = loginRes.eventUrl;
-          await gotoWithLog(page, url, pushLog);
-        }
-      } else if (!loginRes?.ok) {
-        const msg = String(loginRes?.error || "");
-        const soft =
-          msg.includes("No se encontró campo") ||
-          msg.includes("No se detectó cookie") ||
-          msg.includes("botón del Evento");
-        if (!soft) {
-          throw new Error(`LOGIN_FAILED: ${msg || "desconocido"}`);
-        }
-        pushLog("⚠️ Login no requerido o no detectado, continuando...");
-      }
-    }
+    await gotoWithLog(page, url, pushLog);
   } else {
     // Modo test
     const preFile = simulate?.preFile || "prueba3.html";
@@ -341,7 +305,7 @@ async function runAutomation({
 
     await gotoWithLog(page, preUrl, pushLog);
     pushLog(
-      `🧪 Modo Test: esperando ${preMs}ms en ${preFile} antes de habilitar el formulario...`
+      `?? Modo Test: esperando ${preMs}ms en ${preFile} antes de habilitar el formulario...`
     );
     if (shouldStop && shouldStop()) return;
     try {
@@ -355,7 +319,7 @@ async function runAutomation({
     // Sobrescribimos "url" para el resto del flujo (ej: refrescos por hora objetivo)
     url = liveUrl;
 
-    // Guardamos confirmUrl para usarlo en el click de “Siguiente”
+    // Guardamos confirmUrl para usarlo en el click de ?Siguiente?
     page._confirmTestUrl = confirmUrl;
 
     // Guardamos finalUrl para usarlo en el click de Confirmar
@@ -363,7 +327,7 @@ async function runAutomation({
   }
 
   if (!url) {
-    throw new Error("URL requerida para iniciar la automatización");
+    throw new Error("URL requerida para iniciar la automatizaci?n");
   }
 
   // Esperar que habilite el formulario (misma lógica real o test)
