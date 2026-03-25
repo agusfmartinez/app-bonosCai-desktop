@@ -285,6 +285,33 @@ async function runAutomation({
   finalizePurchase = true,
   onPause,
 }) {
+  const waitUntilHora = async () => {
+    const raw = String(horaHabilitacion || '').trim()
+    if (!raw) return
+    const [h, m, s = 0] = raw.split(':').map((v) => Number(v))
+    if ([h, m, s].some((v) => Number.isNaN(v))) return
+
+    const now = new Date()
+    const target = new Date()
+    target.setHours(h, m, s, 0)
+
+    pushLog(`⏳ Validando hora de habilitación ${raw}...`)
+
+    if (now >= target) return
+
+    pushLog(`⏳ Esperando hora de habilitación ${raw}...`)
+    while (new Date() < target) {
+      if (shouldStop && shouldStop()) return
+      const diffMs = target - new Date()
+      if (diffMs <= 0) break
+      await new Promise((r) => setTimeout(r, Math.min(1000, diffMs)))
+    }
+  }
+
+  await waitUntilHora()
+
+  pushLog(`✅ Hora de habilitación cumplida`)
+
   if (!simulateLocal) {
     if (!url) {
       throw new Error("URL requerida para iniciar la automatizaci?n");
@@ -305,7 +332,7 @@ async function runAutomation({
 
     await gotoWithLog(page, preUrl, pushLog);
     pushLog(
-      `?? Modo Test: esperando ${preMs}ms en ${preFile} antes de habilitar el formulario...`
+      `Modo Test: esperando ${preMs}ms en ${preFile} antes de habilitar el formulario...`
     );
     if (shouldStop && shouldStop()) return;
     try {
