@@ -94,18 +94,7 @@ process.on('message', async (msg) => {
 
       await runAutomation({
         ...msg.payload,
-        loginUrl: msg.payload?.loginUrl || LOGIN_URL,
-        cookieName: msg.payload?.cookieName || COOKIE_NAME,
         page,
-        onCookies: (cookies, eventUrl) => {
-          if (Array.isArray(cookies) && cookies.length) {
-            saveCookiesToFile(cookies, eventUrl || null)
-            process.send({
-              type: 'log',
-              payload: { level: 'info', message: '🍪 Cookies guardadas en disco.' },
-            })
-          }
-        },
         onPause: async () => {
           process.send({ type: 'paused' })
           while (!stopFlag) {
