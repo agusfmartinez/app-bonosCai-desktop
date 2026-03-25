@@ -280,7 +280,5 @@ app.whenReady().then(() => {
     if (splash) splash.close();
     win.show();
   });
-
-  throw new Error("test crash")
   
 });
