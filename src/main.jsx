@@ -12,13 +12,14 @@ import "./styles/index.css";
 import { supabase } from "./lib/supabase";
 import { initBackendSession, clearSession } from "./lib/session";
 import { fetchAppConfig } from "./lib/appConfig";
+import { isOutdated } from "./utils/version";
 import App from "./App.jsx";
 import Login from "./pages/Login.jsx";
 import Pending from "./pages/Pending.jsx";
 import Signup from "./pages/Signup.jsx";
 import Loading from "./components/Loading.jsx";
 import SessionExpired from "./components/SessionExpired.jsx";
-const { appVersion } = await window.api.getAppInfo()
+import ForceUpdate from "./components/ForceUpdate.jsx";
 
 
 const PUBLIC_ROUTES = ["/login", "/signup", "/pending"];
@@ -28,6 +29,7 @@ function useAuthGate() {
   const [allowed, setAllowed] = useState(false);
   const [bootstrapped, setBootstrapped] = useState(false);
   const [expired, setExpired] = useState(false);
+  const [forceUpdate, setForceUpdate] = useState(false);
 
 
   const navigate = useNavigate();
@@ -120,21 +122,51 @@ function useAuthGate() {
     appConfigLoadedRef.current = true
     try {
       const config = await fetchAppConfig()
-      console.log("APP VERSION:", appVersion)
-      console.log("CONFIG:", config)
       window.__APP_CONFIG__ = config
       try {
         localStorage.setItem("app_config", JSON.stringify(config))
       } catch {}
+      try {
+        const info = await window.api.getAppInfo()
+        const currentVersion = info?.appVersion
+        const minVersion = config?.min_version
+        if (config?.force_update === true) {
+          setForceUpdate(true)
+          return true
+        }
+        if (currentVersion && minVersion && isOutdated(currentVersion, minVersion)) {
+          setForceUpdate(true)
+          return true
+        }
+      } catch (e) {
+        console.warn("No se pudo validar versión", e)
+      }
     } catch (e) {
       console.warn("No se pudo cargar app config", e)
       try {
         const cached = localStorage.getItem("app_config")
         if (cached) {
-          window.__APP_CONFIG__ = JSON.parse(cached)
+          const parsed = JSON.parse(cached)
+          window.__APP_CONFIG__ = parsed
+          try {
+            const info = await window.api.getAppInfo()
+            const currentVersion = info?.appVersion
+            const minVersion = parsed?.min_version
+            if (parsed?.force_update === true) {
+              setForceUpdate(true)
+              return true
+            }
+            if (currentVersion && minVersion && isOutdated(currentVersion, minVersion)) {
+              setForceUpdate(true)
+              return true
+            }
+          } catch (err) {
+            console.warn("No se pudo validar versión", err)
+          }
         }
       } catch {}
     }
+    return false
   }
 
   useEffect(() => {
@@ -157,6 +189,7 @@ function useAuthGate() {
         cleanupChannel()
         clearSession()
         appConfigLoadedRef.current = false
+        setForceUpdate(false)
         if (window.__APP_CONFIG__) delete window.__APP_CONFIG__
         setAllowed(false)
         if (bootstrappedRef.current && !expiredRef.current && !PUBLIC_ROUTES.includes(locationRef.current)) {
@@ -171,8 +204,12 @@ function useAuthGate() {
 
         // Si es el mismo token, fue un reload: no tocar last_signed_in
         if (prevToken && prevToken === curToken) {
+          const shouldBlock = await loadAppConfigOnce()
+          if (shouldBlock) {
+            setAllowed(false)
+            return
+          }
           setAllowed(true)
-          await loadAppConfigOnce()
           const expected = localStorage.getItem('bp_session_id')
           subscribeUserSession(session.user.id, navigate, expected)
           if (location.pathname === '/login' || location.pathname === '/pending') {
@@ -194,8 +231,12 @@ function useAuthGate() {
           }
           return
         }
+        const shouldBlock = await loadAppConfigOnce()
+        if (shouldBlock) {
+          setAllowed(false)
+          return
+        }
         setAllowed(true)
-        await loadAppConfigOnce()
         subscribeUserSession(session.user.id, navigate, result.sessionId)
         if (locationRef.current === '/login' || locationRef.current === '/pending') {
           navigate('/', { replace: true })
@@ -237,8 +278,12 @@ function useAuthGate() {
             return;
           }
 
+          const shouldBlock = await loadAppConfigOnce()
+          if (shouldBlock) {
+            setAllowed(false)
+            return
+          }
           setAllowed(true);
-          await loadAppConfigOnce()
           subscribeUserSession(initial.session.user.id, navigate, result.sessionId);
 
         } else {
@@ -264,13 +309,14 @@ function useAuthGate() {
     }
   }, [])
 
-  return { ready, allowed, expired };
+  return { ready, allowed, expired, forceUpdate };
 }
 
 function Root() {
-  const { ready, allowed, expired } = useAuthGate();
+  const { ready, allowed, expired, forceUpdate } = useAuthGate();
   if (!ready) return <Loading />;
   if (expired) return <SessionExpired />;
+  if (forceUpdate) return <ForceUpdate />;
 
   return (
     <Routes>
