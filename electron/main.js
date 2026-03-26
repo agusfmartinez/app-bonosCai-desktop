@@ -168,7 +168,7 @@ function createWindow() {
     win.loadURL("http://localhost:5173");
     // win.webContents.openDevTools();
   } else {
-    Menu.setApplicationMenu(null);
+    // Menu.setApplicationMenu(null);
     win.webContents.on("before-input-event", (event, input) => {
       if (input.control && input.shift && input.key.toLowerCase() === "i") {
         event.preventDefault();
