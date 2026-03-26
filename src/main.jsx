@@ -136,6 +136,7 @@ function useAuthGate() {
         }
         if (currentVersion && minVersion && isOutdated(currentVersion, minVersion)) {
           setForceUpdate(true)
+          try { await window.api.forceUpdate?.() } catch {}
           return true
         }
       } catch (e) {
@@ -158,6 +159,7 @@ function useAuthGate() {
             }
             if (currentVersion && minVersion && isOutdated(currentVersion, minVersion)) {
               setForceUpdate(true)
+              try { await window.api.forceUpdate?.() } catch {}
               return true
             }
           } catch (err) {

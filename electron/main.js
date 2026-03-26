@@ -5,6 +5,7 @@ const { initLogger, createLogger } = require("./logger");
 const { initCrashLogger, writeCrash } = require('./crashLogger')
 const RunnerManager = require("./runner/RunnerManager");
 const fs = require("fs");
+const { autoUpdater } = require("electron-updater");
 
 let win;
 let runner;
@@ -17,6 +18,7 @@ let ipcLogger;
 let securityLogger;
 let rendererLogger;
 let runnerLogger;
+let updateRetryTimer;
 
 function logWith(logger, fallbackScope, level, message, meta) {
   if (logger && typeof logger[level] === 'function') {
@@ -194,6 +196,54 @@ function validateRunConfig(cfg) {
   return { ok: true }
 }
 
+function initAutoUpdate() {
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+
+  autoUpdater.on("checking-for-update", () => {
+    console.log("🔍 Buscando actualizaciones...");
+  });
+
+  autoUpdater.on("update-available", () => {
+    console.log("⬇️ Update disponible");
+  });
+
+  autoUpdater.on("update-not-available", () => {
+    console.log("✅ App actualizada");
+  });
+
+  autoUpdater.on("error", (err) => {
+    console.error("❌ Error en autoUpdater:", err);
+  });
+
+  autoUpdater.on("download-progress", (progress) => {
+    console.log(`📦 Descargando: ${progress.percent}%`);
+  });
+
+  autoUpdater.on("update-downloaded", () => {
+    console.log("🚀 Update listo para instalar");
+  });
+
+  autoUpdater.checkForUpdates();
+}
+function forceUpdateCheck() {
+  try {
+    autoUpdater.checkForUpdates();
+  } catch (e) {
+    logMain("error", `AutoUpdater check fall?: ${e?.message || e}`);
+  }
+  if (!updateRetryTimer) {
+    updateRetryTimer = setInterval(() => {
+      try {
+        autoUpdater.checkForUpdates();
+      } catch (err) {
+        logMain("error", `AutoUpdater retry fall?: ${err?.message || err}`);
+      }
+    }, 1000 * 60 * 10);
+  }
+}
+
+
 ipcMain.handle("runner:run", async (_, config) => {
   const v = validateRunConfig(config)
   if (!v.ok) {
@@ -257,6 +307,11 @@ ipcMain.handle('app:info', () => {
   }
 })
 
+ipcMain.handle('app:forceUpdate', () => {
+  forceUpdateCheck();
+  return { ok: true };
+})
+
 
 app.whenReady().then(() => {
   initLogger();
@@ -275,6 +330,7 @@ app.whenReady().then(() => {
   }
   createSplash();
   createWindow();
+  initAutoUpdate();
 
   win.once('ready-to-show', () => {
     if (splash) splash.close();
