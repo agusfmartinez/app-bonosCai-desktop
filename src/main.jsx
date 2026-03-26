@@ -11,12 +11,14 @@ import {
 import "./styles/index.css";
 import { supabase } from "./lib/supabase";
 import { initBackendSession, clearSession } from "./lib/session";
+import { fetchAppConfig } from "./lib/appConfig";
 import App from "./App.jsx";
 import Login from "./pages/Login.jsx";
 import Pending from "./pages/Pending.jsx";
 import Signup from "./pages/Signup.jsx";
 import Loading from "./components/Loading.jsx";
 import SessionExpired from "./components/SessionExpired.jsx";
+const { appVersion } = await window.api.getAppInfo()
 
 
 const PUBLIC_ROUTES = ["/login", "/signup", "/pending"];
@@ -38,6 +40,7 @@ function useAuthGate() {
   const expiredRef = useRef(false);
   const locationRef = useRef(location.pathname);
   const sessionIdRef = useRef(null);
+  const appConfigLoadedRef = useRef(false);
 
   const cleanupChannel = async () => {
     const ch = channelRef.current
@@ -112,6 +115,28 @@ function useAuthGate() {
     }
   }
 
+  const loadAppConfigOnce = async () => {
+    if (appConfigLoadedRef.current) return
+    appConfigLoadedRef.current = true
+    try {
+      const config = await fetchAppConfig()
+      console.log("APP VERSION:", appVersion)
+      console.log("CONFIG:", config)
+      window.__APP_CONFIG__ = config
+      try {
+        localStorage.setItem("app_config", JSON.stringify(config))
+      } catch {}
+    } catch (e) {
+      console.warn("No se pudo cargar app config", e)
+      try {
+        const cached = localStorage.getItem("app_config")
+        if (cached) {
+          window.__APP_CONFIG__ = JSON.parse(cached)
+        }
+      } catch {}
+    }
+  }
+
   useEffect(() => {
     bootstrappedRef.current = bootstrapped
   }, [bootstrapped])
@@ -131,6 +156,8 @@ function useAuthGate() {
       if (!session) {
         cleanupChannel()
         clearSession()
+        appConfigLoadedRef.current = false
+        if (window.__APP_CONFIG__) delete window.__APP_CONFIG__
         setAllowed(false)
         if (bootstrappedRef.current && !expiredRef.current && !PUBLIC_ROUTES.includes(locationRef.current)) {
           navigate('/login', { replace: true })
@@ -145,6 +172,7 @@ function useAuthGate() {
         // Si es el mismo token, fue un reload: no tocar last_signed_in
         if (prevToken && prevToken === curToken) {
           setAllowed(true)
+          await loadAppConfigOnce()
           const expected = localStorage.getItem('bp_session_id')
           subscribeUserSession(session.user.id, navigate, expected)
           if (location.pathname === '/login' || location.pathname === '/pending') {
@@ -167,6 +195,7 @@ function useAuthGate() {
           return
         }
         setAllowed(true)
+        await loadAppConfigOnce()
         subscribeUserSession(session.user.id, navigate, result.sessionId)
         if (locationRef.current === '/login' || locationRef.current === '/pending') {
           navigate('/', { replace: true })
@@ -209,6 +238,7 @@ function useAuthGate() {
           }
 
           setAllowed(true);
+          await loadAppConfigOnce()
           subscribeUserSession(initial.session.user.id, navigate, result.sessionId);
 
         } else {
