@@ -245,6 +245,10 @@ function initAutoUpdate() {
 
   autoUpdater.on("update-downloaded", () => {
     emitUpdaterLog("info", "?? Update listo para instalar");
+
+    setTimeout(() => {
+      autoUpdater.quitAndInstall();
+    }, 1000);
   });
 
   autoUpdater.checkForUpdates();
