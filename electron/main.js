@@ -166,7 +166,9 @@ function createWindow() {
     );
   });
 
-  if (!app.isPackaged || process.env.ELECTRON_DEV === "true") {
+  const isDev = !app.isPackaged && process.env.ELECTRON_DEV === "true";
+
+  if (isDev) {
     win.loadURL("http://localhost:5173");
     // win.webContents.openDevTools();
   } else {
