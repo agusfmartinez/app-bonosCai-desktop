@@ -69,6 +69,7 @@ export default function App() {
 
   const [config, setConfig] = useState(() => EMPTY_CONFIG);
   const [configLoading, setConfigLoading] = useState(true)
+  const [appVersion, setAppVersion] = useState("")
 
   const navigate = useNavigate();
 
@@ -126,6 +127,23 @@ export default function App() {
     loadConfig();
     return () => { cancelled = true; };
   }, []);
+
+  useEffect(() => {
+    let mounted = true
+    const loadAppVersion = async () => {
+      try {
+        if (!window.api?.getAppInfo) return
+        const info = await window.api.getAppInfo()
+        if (mounted && info?.appVersion) {
+          setAppVersion(info.appVersion)
+        }
+      } catch {
+        // no-op
+      }
+    }
+    loadAppVersion()
+    return () => { mounted = false }
+  }, [])
 
   useEffect(() => {
     let mounted = true
@@ -360,9 +378,14 @@ export default function App() {
       <div className="mx-auto flex min-h-screen max-w-5xl flex-col gap-10 px-6 py-12 lg:px-10">
         <header className="space-y-3 flex">
           <div className="flex-wrap">
-            <span className="text-xs font-semibold uppercase tracking-[0.4em] text-black-400">
-              Bonos CAI
-            </span>
+            <div className="flex items-center gap-3">
+              <span className="text-xs font-semibold uppercase tracking-[0.4em] text-black-400">
+                Bonos CAI
+              </span>
+              <span className="rounded-full border border-white/15 bg-white/10 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-white/80">
+                v{appVersion || window.__APP_CONFIG__?.current_version || window.__APP_CONFIG__?.latest_version || '0.0.0'}
+              </span>
+            </div>
             <h1 className="text-4xl font-semibold text-white sm:text-5xl">
               Automatización de canje de bonos
             </h1>
