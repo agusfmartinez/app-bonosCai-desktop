@@ -19,6 +19,8 @@ let securityLogger;
 let rendererLogger;
 let runnerLogger;
 let updateRetryTimer;
+let updaterLogBuffer = []
+const UPDATER_LOG_BUFFER_LIMIT = 50
 
 function logWith(logger, fallbackScope, level, message, meta) {
   if (logger && typeof logger[level] === 'function') {
@@ -200,28 +202,49 @@ function initAutoUpdate() {
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;
 
+  const emitUpdaterLog = (level, message, meta) => {
+    const entry = { level, message, meta, ts: Date.now() }
+    updaterLogBuffer.push(entry)
+    if (updaterLogBuffer.length > UPDATER_LOG_BUFFER_LIMIT) {
+      updaterLogBuffer = updaterLogBuffer.slice(-UPDATER_LOG_BUFFER_LIMIT)
+    }
+    try {
+      if (win && !win.isDestroyed()) {
+        win.webContents.send('updater:log', entry)
+      }
+    } catch {}
+    const safeLevel = ['info', 'warn', 'error'].includes(level) ? level : 'info'
+    if (safeLevel === 'error') {
+      console.error(message, meta || '')
+    } else if (safeLevel === 'warn') {
+      console.warn(message, meta || '')
+    } else {
+      console.log(message, meta || '')
+    }
+  }
+
   autoUpdater.on("checking-for-update", () => {
-    console.log("🔍 Buscando actualizaciones...");
+    emitUpdaterLog("info", "?? Buscando actualizaciones...");
   });
 
   autoUpdater.on("update-available", () => {
-    console.log("⬇️ Update disponible");
+    emitUpdaterLog("info", "?? Update disponible");
   });
 
   autoUpdater.on("update-not-available", () => {
-    console.log("✅ App actualizada");
+    emitUpdaterLog("info", "? App actualizada");
   });
 
   autoUpdater.on("error", (err) => {
-    console.error("❌ Error en autoUpdater:", err);
+    emitUpdaterLog("error", "? Error en autoUpdater", { error: String(err?.message || err) });
   });
 
   autoUpdater.on("download-progress", (progress) => {
-    console.log(`📦 Descargando: ${progress.percent}%`);
+    emitUpdaterLog("info", `?? Descargando: ${progress.percent}%`, { percent: progress.percent });
   });
 
   autoUpdater.on("update-downloaded", () => {
-    console.log("🚀 Update listo para instalar");
+    emitUpdaterLog("info", "?? Update listo para instalar");
   });
 
   autoUpdater.checkForUpdates();
@@ -252,6 +275,19 @@ ipcMain.handle("runner:run", async (_, config) => {
   }
   logIpc("info", "Runner iniciado")
   return await runner.run(config)
+})
+
+ipcMain.handle("updater:subscribe", async () => {
+  try {
+    if (win && !win.isDestroyed()) {
+      updaterLogBuffer.forEach((entry) => {
+        try {
+          win.webContents.send('updater:log', entry)
+        } catch {}
+      })
+    }
+  } catch {}
+  return { ok: true, count: updaterLogBuffer.length }
 })
 
 

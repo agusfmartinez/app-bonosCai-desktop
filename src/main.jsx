@@ -316,6 +316,19 @@ function useAuthGate() {
 
 function Root() {
   const { ready, allowed, expired, forceUpdate } = useAuthGate();
+
+  useEffect(() => {
+    if (!window.api?.onUpdaterLog) return
+    const handler = (data) => {
+      console.log("[UPDATER]", data)
+    }
+    window.api.subscribeUpdaterLogs?.()
+    window.api.onUpdaterLog(handler)
+    return () => {
+      window.api.offUpdaterLog?.(handler)
+    }
+  }, [])
+
   if (!ready) return <Loading />;
   if (expired) return <SessionExpired />;
   if (forceUpdate) return <ForceUpdate />;
