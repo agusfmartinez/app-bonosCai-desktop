@@ -10,7 +10,7 @@
     "dev:electron": "cross-env ELECTRON_DEV=true wait-on http://localhost:5173 && electron .",
     "postinstall": "playwright install chromium",
     "build": "vite build",
-    "dist": "npm run build && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder"
+    "dist": "npm run build && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --publish always"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.58.0",
