@@ -10,6 +10,7 @@ import { supabase } from "./lib/supabase";
 import { clearSession } from "./lib/session";
 import { startRun, finishRun } from "./lib/runs";
 import { getConfig, saveConfig } from "./lib/config";
+import { useUpdater } from "./context/UpdateContext.jsx";
 
 import { useRunnerStatus } from './hooks/useRunnerStatus'
 
@@ -74,6 +75,7 @@ export default function App() {
   const navigate = useNavigate();
 
   const { status, error } = useRunnerStatus()
+  const { checkForUpdates } = useUpdater()
   const isRunning = status === 'running' || status === 'stopping' || status === 'paused'
   const isDev = import.meta.env.DEV
   const [finalizePurchase, setFinalizePurchase] = useState(true)
@@ -395,6 +397,13 @@ export default function App() {
             </p>
           </div>
           <div className="ml-auto flex items-center gap-3">
+            <button
+              className={loginButtonClass}
+              onClick={() => checkForUpdates && checkForUpdates()}
+              title="Buscar actualizaciones"
+            >
+              Buscar updates
+            </button>
             <button
               className={loginButtonClass}
               onClick={() => window.location.reload()}

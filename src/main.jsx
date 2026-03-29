@@ -20,6 +20,8 @@ import Signup from "./pages/Signup.jsx";
 import Loading from "./components/Loading.jsx";
 import SessionExpired from "./components/SessionExpired.jsx";
 import ForceUpdate from "./components/ForceUpdate.jsx";
+import UpdateUI from "./components/UpdateUI.jsx";
+import { UpdateProvider } from "./context/UpdateContext.jsx";
 
 
 const PUBLIC_ROUTES = ["/login", "/signup", "/pending"];
@@ -348,7 +350,10 @@ function Root() {
 }
 
 createRoot(document.getElementById("root")).render(
-  <HashRouter>
-    <Root />
-  </HashRouter>
+  <UpdateProvider>
+    <HashRouter>
+      <UpdateUI />
+      <Root />
+    </HashRouter>
+  </UpdateProvider>
 );

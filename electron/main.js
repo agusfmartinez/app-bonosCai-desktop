@@ -202,6 +202,14 @@ function initAutoUpdate() {
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;
 
+  const sendUpdateEvent = (payload) => {
+    try {
+      if (win && !win.isDestroyed()) {
+        win.webContents.send('update:event', payload)
+      }
+    } catch {}
+  }
+
   const emitUpdaterLog = (level, message, meta) => {
     const entry = { level, message, meta, ts: Date.now() }
     updaterLogBuffer.push(entry)
@@ -224,31 +232,33 @@ function initAutoUpdate() {
   }
 
   autoUpdater.on("checking-for-update", () => {
+    sendUpdateEvent({ status: "checking" })
     emitUpdaterLog("info", "?? Buscando actualizaciones...");
   });
 
   autoUpdater.on("update-available", () => {
+    sendUpdateEvent({ status: "available" })
     emitUpdaterLog("info", "?? Update disponible");
   });
 
   autoUpdater.on("update-not-available", () => {
+    sendUpdateEvent({ status: "idle" })
     emitUpdaterLog("info", "? App actualizada");
   });
 
   autoUpdater.on("error", (err) => {
+    sendUpdateEvent({ status: "error", message: String(err?.message || err) })
     emitUpdaterLog("error", "? Error en autoUpdater", { error: String(err?.message || err) });
   });
 
   autoUpdater.on("download-progress", (progress) => {
+    sendUpdateEvent({ status: "downloading", percent: Math.round(progress.percent) })
     emitUpdaterLog("info", `?? Descargando: ${progress.percent}%`, { percent: progress.percent });
   });
 
   autoUpdater.on("update-downloaded", () => {
+    sendUpdateEvent({ status: "downloaded" })
     emitUpdaterLog("info", "?? Update listo para instalar");
-
-    setTimeout(() => {
-      autoUpdater.quitAndInstall();
-    }, 1000);
   });
 
   autoUpdater.checkForUpdates();
@@ -292,6 +302,25 @@ ipcMain.handle("updater:subscribe", async () => {
     }
   } catch {}
   return { ok: true, count: updaterLogBuffer.length }
+})
+
+ipcMain.handle("update:check", async () => {
+  try {
+    return await autoUpdater.checkForUpdates()
+  } catch (err) {
+    logMain("error", `AutoUpdater check failed: ${err?.message || err}`)
+    return { ok: false, error: String(err?.message || err) }
+  }
+})
+
+ipcMain.handle("update:install", async () => {
+  try {
+    autoUpdater.quitAndInstall()
+    return { ok: true }
+  } catch (err) {
+    logMain("error", `AutoUpdater install failed: ${err?.message || err}`)
+    return { ok: false, error: String(err?.message || err) }
+  }
 })
 
 

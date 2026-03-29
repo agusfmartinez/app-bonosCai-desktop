@@ -48,3 +48,11 @@ contextBridge.exposeInMainWorld('api', {
   },
   
 })
+
+contextBridge.exposeInMainWorld('updater', {
+  onUpdateEvent: (cb) => {
+    ipcRenderer.on('update:event', (_event, data) => cb(data))
+  },
+  checkForUpdates: () => ipcRenderer.invoke('update:check'),
+  installUpdate: () => ipcRenderer.invoke('update:install'),
+})
