@@ -35,10 +35,22 @@ export const UpdateProvider = ({ children }) => {
           setStatus("downloaded");
           setError(null);
           break;
-        case "error":
+        case "error": {
+          const raw = event.message || "Error desconocido";
+          let friendly = "No se pudo actualizar. Intentá nuevamente."
+          if (typeof raw === "string") {
+            if (raw.includes("beta.yml") || raw.includes("latest.yml")) {
+              friendly = "No se encontró una versión publicada para tu canal."
+            } else if (raw.includes("403") || raw.includes("401")) {
+              friendly = "No se pudo acceder al servidor de actualizaciones."
+            } else if (raw.toLowerCase().includes("network") || raw.toLowerCase().includes("fetch")) {
+              friendly = "No hay conexión con el servidor de actualizaciones."
+            }
+          }
           setStatus("error");
-          setError(event.message || "Error desconocido");
+          setError(friendly);
           break;
+        }
         default:
           setStatus("idle");
           break;
