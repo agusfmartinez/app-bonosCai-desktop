@@ -137,6 +137,10 @@ function useAuthGate() {
       }
       try {
         const info = await window.api.getAppInfo()
+        if (info?.appVersion) {
+          window.__APP_VERSION__ = info.appVersion
+          try { localStorage.setItem('bp_app_version', info.appVersion) } catch {}
+        }
         const currentVersion = info?.appVersion
         const minVersion = config?.min_version
         if (config?.force_update === true) {
@@ -167,6 +171,10 @@ function useAuthGate() {
           }
           try {
             const info = await window.api.getAppInfo()
+            if (info?.appVersion) {
+              window.__APP_VERSION__ = info.appVersion
+              try { localStorage.setItem('bp_app_version', info.appVersion) } catch {}
+            }
             const currentVersion = info?.appVersion
             const minVersion = parsed?.min_version
             if (parsed?.force_update === true) {

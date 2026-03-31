@@ -21,6 +21,13 @@ let runnerLogger;
 let updateRetryTimer;
 let updaterLogBuffer = []
 const UPDATER_LOG_BUFFER_LIMIT = 50
+let updateRetryCount = 0
+const UPDATE_MAX_RETRIES = 3
+let updateLastCheck = 0
+const UPDATE_MIN_INTERVAL_MS = 5000
+const UPDATE_RETRY_DELAY_MS = 10000
+let updateDownloadTimeout = null
+let updateBackgroundTimer = null
 
 function logWith(logger, fallbackScope, level, message, meta) {
   if (logger && typeof logger[level] === 'function') {
@@ -198,6 +205,15 @@ function validateRunConfig(cfg) {
   return { ok: true }
 }
 
+function safeCheckForUpdates() {
+  const now = Date.now()
+  if (now - updateLastCheck < UPDATE_MIN_INTERVAL_MS) return
+  updateLastCheck = now
+  autoUpdater.checkForUpdates().catch((err) => {
+    logMain("error", `checkForUpdates failed: ${err?.message || err}`)
+  })
+}
+
 function initAutoUpdate() {
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;
@@ -233,35 +249,68 @@ function initAutoUpdate() {
 
   autoUpdater.on("checking-for-update", () => {
     sendUpdateEvent({ status: "checking" })
-    emitUpdaterLog("info", "?? Buscando actualizaciones...");
-  });
+    emitUpdaterLog("info", "?? Buscando actualizaciones...")
+  })
 
   autoUpdater.on("update-available", () => {
+    updateRetryCount = 0
     sendUpdateEvent({ status: "available" })
-    emitUpdaterLog("info", "?? Update disponible");
-  });
+    emitUpdaterLog("info", "?? Update disponible")
+  })
 
   autoUpdater.on("update-not-available", () => {
+    updateRetryCount = 0
     sendUpdateEvent({ status: "idle" })
-    emitUpdaterLog("info", "? App actualizada");
-  });
+    emitUpdaterLog("info", "? App actualizada")
+  })
 
   autoUpdater.on("error", (err) => {
-    sendUpdateEvent({ status: "error", message: String(err?.message || err) })
-    emitUpdaterLog("error", "? Error en autoUpdater", { error: String(err?.message || err) });
-  });
+    const message = String(err?.message || err)
+    sendUpdateEvent({ status: "error", message })
+    emitUpdaterLog("error", "? Error en autoUpdater", { error: message })
+
+    if (updateRetryCount < UPDATE_MAX_RETRIES) {
+      updateRetryCount += 1
+      const retryIn = UPDATE_RETRY_DELAY_MS * updateRetryCount
+      emitUpdaterLog("warn", `Reintentando update (#${updateRetryCount}) en ${retryIn / 1000}s`)
+      setTimeout(() => {
+        safeCheckForUpdates()
+      }, retryIn)
+    } else {
+      emitUpdaterLog("warn", "Max retries alcanzado")
+    }
+  })
 
   autoUpdater.on("download-progress", (progress) => {
     sendUpdateEvent({ status: "downloading", percent: Math.round(progress.percent) })
-    emitUpdaterLog("info", `?? Descargando: ${progress.percent}%`, { percent: progress.percent });
-  });
+    emitUpdaterLog("info", `?? Descargando: ${progress.percent}%`, { percent: progress.percent })
+
+    if (updateDownloadTimeout) clearTimeout(updateDownloadTimeout)
+    updateDownloadTimeout = setTimeout(() => {
+      emitUpdaterLog("warn", "Download sin progreso, reintentando...")
+      try {
+        autoUpdater.cancelDownload()
+      } catch {}
+      safeCheckForUpdates()
+    }, 30000)
+  })
 
   autoUpdater.on("update-downloaded", () => {
+    if (updateDownloadTimeout) {
+      clearTimeout(updateDownloadTimeout)
+      updateDownloadTimeout = null
+    }
     sendUpdateEvent({ status: "downloaded" })
-    emitUpdaterLog("info", "?? Update listo para instalar");
-  });
+    emitUpdaterLog("info", "?? Update listo para instalar")
+  })
 
+  if (!updateBackgroundTimer) {
+    updateBackgroundTimer = setInterval(() => {
+      safeCheckForUpdates()
+    }, 1000 * 60 * 30)
+  }
 }
+
 
 function setUpdateChannel(channel) {
   const normalized = channel === 'beta' ? 'beta' : 'latest'
@@ -311,7 +360,8 @@ ipcMain.handle("updater:subscribe", async () => {
 
 ipcMain.handle("update:check", async () => {
   try {
-    return await autoUpdater.checkForUpdates()
+    safeCheckForUpdates()
+    return { ok: true }
   } catch (err) {
     logMain("error", `AutoUpdater check failed: ${err?.message || err}`)
     return { ok: false, error: String(err?.message || err) }
@@ -335,6 +385,16 @@ ipcMain.handle("update:install", async () => {
     return { ok: true }
   } catch (err) {
     logMain("error", `AutoUpdater install failed: ${err?.message || err}`)
+    return { ok: false, error: String(err?.message || err) }
+  }
+})
+
+ipcMain.handle("update:force-check", async () => {
+  try {
+    updateRetryCount = 0
+    return await autoUpdater.checkForUpdates()
+  } catch (err) {
+    logMain("error", `AutoUpdater force check failed: ${err?.message || err}`)
     return { ok: false, error: String(err?.message || err) }
   }
 })
