@@ -261,19 +261,24 @@ function initAutoUpdate() {
     emitUpdaterLog("info", "?? Update listo para instalar");
   });
 
-  autoUpdater.checkForUpdates();
 }
+
+function setUpdateChannel(channel) {
+  const normalized = channel === 'beta' ? 'beta' : 'latest'
+  autoUpdater.channel = normalized
+  autoUpdater.allowDowngrade = false
+  return normalized
+}
+
 function forceUpdateCheck() {
   try {
-    autoUpdater.checkForUpdates();
-  } catch (e) {
+    } catch (e) {
     logMain("error", `AutoUpdater check fall?: ${e?.message || e}`);
   }
   if (!updateRetryTimer) {
     updateRetryTimer = setInterval(() => {
       try {
-        autoUpdater.checkForUpdates();
-      } catch (err) {
+            } catch (err) {
         logMain("error", `AutoUpdater retry fall?: ${err?.message || err}`);
       }
     }, 1000 * 60 * 10);
@@ -309,6 +314,17 @@ ipcMain.handle("update:check", async () => {
     return await autoUpdater.checkForUpdates()
   } catch (err) {
     logMain("error", `AutoUpdater check failed: ${err?.message || err}`)
+    return { ok: false, error: String(err?.message || err) }
+  }
+})
+
+ipcMain.handle("update:set-channel", async (_event, channel) => {
+  try {
+    const normalized = setUpdateChannel(channel)
+    logMain("info", `Update channel set: ${normalized}`)
+    return { ok: true, channel: normalized }
+  } catch (err) {
+    logMain("error", `Update channel set failed: ${err?.message || err}`)
     return { ok: false, error: String(err?.message || err) }
   }
 })
@@ -365,9 +381,9 @@ ipcMain.handle('runner:loginStatus', () => {
 ipcMain.handle('app:info', () => {
   const platform = process.platform
   let normalized = platform
-  if (platform === 'win32') normalized = 'windows'
-  else if (platform === 'darwin') normalized = 'macos'
-  else if (platform === 'linux') normalized = 'linux'
+  if (platform === 'win32') normalized = 'Windows'
+  else if (platform === 'darwin') normalized = 'MacOS'
+  else if (platform === 'linux') normalized = 'Linux'
 
   return {
     appVersion: app.getVersion(),

@@ -129,6 +129,13 @@ function useAuthGate() {
         localStorage.setItem("app_config", JSON.stringify(config))
       } catch {}
       try {
+        const channel = config?.channel || "stable"
+        await window.updater?.setChannel?.(channel)
+        await window.updater?.checkForUpdates?.()
+      } catch (err) {
+        console.warn("No se pudo setear canal/update", err)
+      }
+      try {
         const info = await window.api.getAppInfo()
         const currentVersion = info?.appVersion
         const minVersion = config?.min_version
@@ -151,6 +158,13 @@ function useAuthGate() {
         if (cached) {
           const parsed = JSON.parse(cached)
           window.__APP_CONFIG__ = parsed
+          try {
+            const channel = parsed?.channel || "stable"
+            await window.updater?.setChannel?.(channel)
+            await window.updater?.checkForUpdates?.()
+          } catch (err) {
+            console.warn("No se pudo setear canal/update (cache)", err)
+          }
           try {
             const info = await window.api.getAppInfo()
             const currentVersion = info?.appVersion
