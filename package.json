@@ -57,6 +57,12 @@
         "repo": "app-bonosCai-desktop"
       }
     ],
+    "extraResources": [
+      {
+        "from": "node_modules/playwright/.local-browsers",
+        "to": "playwright-browsers"
+      }
+    ],
     "win": {
       "target": "nsis"
     }

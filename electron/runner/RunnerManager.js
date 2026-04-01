@@ -33,6 +33,24 @@ class RunnerManager {
       done(result)
     }
 
+    if (this.child && this.child.stderr) {
+      this.child.stderr.on('data', (chunk) => {
+        const message = String(chunk).trim()
+        if (message) {
+          this.emitLog({ level: 'error', message: `Runner stderr: ${message}` })
+        }
+      })
+    }
+
+    if (this.child && this.child.stdout) {
+      this.child.stdout.on('data', (chunk) => {
+        const message = String(chunk).trim()
+        if (message) {
+          this.emitLog({ level: 'info', message: `Runner stdout: ${message}` })
+        }
+      })
+    }
+
     this.child.on('message', (msg) => {
       if (msg.type === 'log') {
         this.emitLog(msg.payload)

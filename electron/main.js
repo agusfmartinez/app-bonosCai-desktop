@@ -29,6 +29,10 @@ const UPDATE_RETRY_DELAY_MS = 10000
 let updateDownloadTimeout = null
 let updateBackgroundTimer = null
 
+if (app.isPackaged) {
+  process.env.PLAYWRIGHT_BROWSERS_PATH = path.join(process.resourcesPath, "playwright-browsers")
+}
+
 function logWith(logger, fallbackScope, level, message, meta) {
   if (logger && typeof logger[level] === 'function') {
     return logger[level](message, meta)
