@@ -8,7 +8,7 @@
     "dev": "concurrently \"npm:dev:ui\" \"npm:dev:electron\"",
     "dev:ui": "vite",
     "dev:electron": "cross-env ELECTRON_DEV=true wait-on http://localhost:5173 && electron .",
-    "postinstall": "playwright install chromium",
+    "postinstall": "cross-env PLAYWRIGHT_BROWSERS_PATH=0 playwright install chromium",
     "build": "vite build",
     "dist": "npm run build && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --publish always",
     "dist:beta": "npm run build && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --publish always --config.publish.channel=beta"
@@ -59,7 +59,7 @@
     ],
     "extraResources": [
       {
-        "from": "node_modules/playwright/.local-browsers",
+        "from": "node_modules/playwright-core/.local-browsers",
         "to": "playwright-browsers"
       }
     ],
