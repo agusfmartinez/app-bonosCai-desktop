@@ -1,4 +1,6 @@
-require("dotenv/config");
+try {
+  require("dotenv/config");
+} catch {}
 const fs = require("fs");
 const path = require("path");
 if (process.resourcesPath && !process.env.PLAYWRIGHT_BROWSERS_PATH) {
@@ -7,12 +9,10 @@ if (process.resourcesPath && !process.env.PLAYWRIGHT_BROWSERS_PATH) {
 const { chromium } = require("playwright");
 const { runAutomation, loginProgrammatic } = require("./automation");
 
-const COOKIES_PATH =
-  process.env.BVIP_COOKIES_PATH ||
-  path.join(__dirname, "cookies.json");
-const COOKIES_TTL_SECONDS = Number(process.env.BVIP_COOKIES_TTL || 10800);
-const LOGIN_URL = process.env.BVIP_LOGIN_URL || "https://cai.boleteriavip.com.ar/ingresar";
-const COOKIE_NAME = process.env.BVIP_COOKIE_NAME || "bolvipwebappauth";
+const COOKIES_PATH = path.join(__dirname, "cookies.json");
+const COOKIES_TTL_SECONDS = 10800;
+const LOGIN_URL = "https://cai.boleteriavip.com.ar/ingresar";
+const COOKIE_NAME = "bolvipwebappauth";
 
 async function detectEventUrl(page) {
   try {
