@@ -1,6 +1,9 @@
 require("dotenv/config");
 const fs = require("fs");
 const path = require("path");
+if (process.resourcesPath && !process.env.PLAYWRIGHT_BROWSERS_PATH) {
+  process.env.PLAYWRIGHT_BROWSERS_PATH = path.join(process.resourcesPath, "playwright-browsers")
+}
 const { chromium } = require("playwright");
 const { runAutomation, loginProgrammatic } = require("./automation");
 

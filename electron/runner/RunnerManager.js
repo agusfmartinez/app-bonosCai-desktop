@@ -51,6 +51,17 @@ class RunnerManager {
       })
     }
 
+    this.child.on('error', (err) => {
+      const message = err?.message || String(err)
+      this.emitLog({ level: 'error', message: `Runner spawn error: ${message}` })
+      this.state.set('error', message)
+      if (this.mode === 'login' && this.pending) {
+        const done = this.pending
+        this.pending = null
+        done({ ok: false, error: message })
+      }
+    })
+
     this.child.on('message', (msg) => {
       if (msg.type === 'log') {
         this.emitLog(msg.payload)
@@ -154,7 +165,7 @@ class RunnerManager {
     this.currentRunId = runId
     this.runStartTime = Date.now()
     const runnerPath = path.join(__dirname, 'runnerProcess.js')
-    this.child = fork(runnerPath)
+    this.child = fork(runnerPath, [], { stdio: ['pipe', 'pipe', 'pipe', 'ipc'] })
 
     this.state.set('running')
     this.emitLog({ 
@@ -181,7 +192,7 @@ class RunnerManager {
     this.mode = 'login'
     this.currentRunId = null
     const runnerPath = path.join(__dirname, 'runnerProcess.js')
-    this.child = fork(runnerPath)
+    this.child = fork(runnerPath, [], { stdio: ['pipe', 'pipe', 'pipe', 'ipc'] })
 
     this.state.set('running')
     this.emitLog({ level: 'info', message: 'Iniciando login...' })
