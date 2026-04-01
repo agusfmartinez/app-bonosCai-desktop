@@ -112,11 +112,13 @@ class RunnerManager {
       }
     })
 
-    this.child.on('exit', () => {
+    this.child.on('exit', (code, signal) => {
       if (this.state.status === 'running') {
-        this.state.set('error', 'Runner finalizó inesperadamente')
+        const message = `Runner finalizó inesperadamente (code=${code ?? 'null'} signal=${signal ?? 'null'})`
+        this.state.set('error', message)
+        this.emitLog({ level: 'error', message })
         if (this.mode === 'login') {
-          finish({ ok: false, error: 'Runner finalizó inesperadamente' })
+          finish({ ok: false, error: message })
         }
       }
       if (this.state.status === 'stopping') {

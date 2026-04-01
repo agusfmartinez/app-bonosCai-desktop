@@ -57,6 +57,24 @@ let context = null
 let page = null
 let stopFlag = false
 
+function sendFatalError(err) {
+  const message = err?.stack || err?.message || String(err)
+  try {
+    process.send({ type: 'log', payload: { level: 'error', message } })
+  } catch {}
+  try {
+    process.send({ type: 'error', error: message })
+  } catch {}
+}
+
+process.on('uncaughtException', (err) => {
+  sendFatalError(err)
+})
+
+process.on('unhandledRejection', (err) => {
+  sendFatalError(err)
+})
+
 process.on('message', async (msg) => {
   if (msg.type === 'run') {
     stopFlag = false
