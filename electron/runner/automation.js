@@ -53,7 +53,7 @@ async function loginProgrammatic({
     } else {
       const existing = await detectExistingSession();
       if (existing.ok) return existing;
-      return { ok: false, cookies: [], error: "No se encontr? campo Email" };
+      return { ok: false, cookies: [], error: "No se encontró campo Email" };
     }
 
     if (
@@ -69,7 +69,7 @@ async function loginProgrammatic({
     } else {
       const existing = await detectExistingSession();
       if (existing.ok) return existing;
-      return { ok: false, cookies: [], error: "No se encontr? campo Password" };
+      return { ok: false, cookies: [], error: "No se encontró campo Password" };
     }
 
     // Click submit + esperar navegación
@@ -84,7 +84,7 @@ async function loginProgrammatic({
     ) {
       const existing = await detectExistingSession();
       if (existing.ok) return existing;
-      return { ok: false, cookies: [], error: "No se encontr? bot?n de Login" };
+      return { ok: false, cookies: [], error: "No se encontró botón de Login" };
     }
 
     await Promise.all([
@@ -314,7 +314,7 @@ async function runAutomation({
 
   if (!simulateLocal) {
     if (!url) {
-      throw new Error("URL requerida para iniciar la automatizaci?n");
+      throw new Error("URL requerida para iniciar la automatización");
     }
     await gotoWithLog(page, url, pushLog);
   } else {
@@ -346,7 +346,7 @@ async function runAutomation({
     // Sobrescribimos "url" para el resto del flujo (ej: refrescos por hora objetivo)
     url = liveUrl;
 
-    // Guardamos confirmUrl para usarlo en el click de ?Siguiente?
+    // Guardamos confirmUrl para usarlo en el click de "Siguiente"
     page._confirmTestUrl = confirmUrl;
 
     // Guardamos finalUrl para usarlo en el click de Confirmar
@@ -354,7 +354,7 @@ async function runAutomation({
   }
 
   if (!url) {
-    throw new Error("URL requerida para iniciar la automatizaci?n");
+    throw new Error("URL requerida para iniciar la automatización");
   }
 
   // Esperar que habilite el formulario (misma lógica real o test)

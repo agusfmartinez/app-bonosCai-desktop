@@ -10,9 +10,9 @@ export default function ForceUpdate() {
           Bonos CAI
         </div>
         <div className="rounded-2xl border border-white/10 bg-white/5 px-10 py-8 text-center shadow-2xl">
-          <div className="text-2xl font-semibold">Actualizaci?n requerida</div>
+          <div className="text-2xl font-semibold">Actualización requerida</div>
           <div className="mt-2 text-sm text-white/70">
-            Tu versi?n qued? desactualizada. Instal? la ?ltima versi?n para continuar.
+            Tu versión quedó desactualizada. Instale la última versión para continuar.
           </div>
           <button
             type="button"

@@ -249,25 +249,25 @@ function initAutoUpdate() {
 
   autoUpdater.on("checking-for-update", () => {
     sendUpdateEvent({ status: "checking" })
-    emitUpdaterLog("info", "?? Buscando actualizaciones...")
+    emitUpdaterLog("info", "🔎 Buscando actualizaciones...")
   })
 
   autoUpdater.on("update-available", () => {
     updateRetryCount = 0
     sendUpdateEvent({ status: "available" })
-    emitUpdaterLog("info", "?? Update disponible")
+    emitUpdaterLog("info", "⬇️ Update disponible")
   })
 
   autoUpdater.on("update-not-available", () => {
     updateRetryCount = 0
     sendUpdateEvent({ status: "idle" })
-    emitUpdaterLog("info", "? App actualizada")
+    emitUpdaterLog("info", "✅ App actualizada")
   })
 
   autoUpdater.on("error", (err) => {
     const message = String(err?.message || err)
     sendUpdateEvent({ status: "error", message })
-    emitUpdaterLog("error", "? Error en autoUpdater", { error: message })
+    emitUpdaterLog("error", "⚠️ Error en autoUpdater", { error: message })
 
     if (updateRetryCount < UPDATE_MAX_RETRIES) {
       updateRetryCount += 1
@@ -283,7 +283,7 @@ function initAutoUpdate() {
 
   autoUpdater.on("download-progress", (progress) => {
     sendUpdateEvent({ status: "downloading", percent: Math.round(progress.percent) })
-    emitUpdaterLog("info", `?? Descargando: ${progress.percent}%`, { percent: progress.percent })
+    emitUpdaterLog("info", `⏬ Descargando: ${progress.percent}%`, { percent: progress.percent })
 
     if (updateDownloadTimeout) clearTimeout(updateDownloadTimeout)
     updateDownloadTimeout = setTimeout(() => {
@@ -301,7 +301,7 @@ function initAutoUpdate() {
       updateDownloadTimeout = null
     }
     sendUpdateEvent({ status: "downloaded" })
-    emitUpdaterLog("info", "?? Update listo para instalar")
+    emitUpdaterLog("info", "▶️ Update listo para instalar")
   })
 
   if (!updateBackgroundTimer) {

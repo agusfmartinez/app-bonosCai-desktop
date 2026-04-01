@@ -40,7 +40,7 @@ class RunnerManager {
 
       if (msg.type === 'paused') {
         this.state.set('paused')
-        this.emitLog({ level: 'warning', message: 'Automatizaci?n pausada. Esperando acci?n del usuario.' })
+        this.emitLog({ level: 'warning', message: 'Automatización pausada. Esperando acción del usuario.' })
       }
 
       if (msg.type === 'login-result') {
@@ -96,9 +96,9 @@ class RunnerManager {
 
     this.child.on('exit', () => {
       if (this.state.status === 'running') {
-        this.state.set('error', 'Runner finaliz? inesperadamente')
+        this.state.set('error', 'Runner finalizó inesperadamente')
         if (this.mode === 'login') {
-          finish({ ok: false, error: 'Runner finaliz? inesperadamente' })
+          finish({ ok: false, error: 'Runner finalizó inesperadamente' })
         }
       }
       if (this.state.status === 'stopping') {
