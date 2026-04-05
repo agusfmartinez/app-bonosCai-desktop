@@ -1,0 +1,66 @@
+{
+  "savedAt": 1775076173683,
+  "cookies": [
+    {
+      "name": "_bvip_antiforgey",
+      "value": "CfDJ8A6oth3r6HVBmRwSauu-eZi8YzjMkhknPnQX3q8XbBbLqqw7oNXyvInj8VuTntaFYATodM8crVvtYWSEgJB7PfdiI2Q6ehZ3ahxRV7uYBiKyQUfVZsEH1qbXEY52MlnzMzZQeOatoYxMmx-di7x9Fwo",
+      "domain": "cai.boleteriavip.com.ar",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "_bvip_session",
+      "value": "CfDJ8A6oth3r6HVBmRwSauu%2BeZgEewRkFyxiNuRHt6qtETtD4ntJbxC5vRtvl2t5JHVrCFDgLp0%2Fc3zQ6%2FDZr7lta0g5rlTuq3z9yCwXJCjoHZd9CecItoKtLFAo7GXpRFM0qc7Dd6HfaQd3ebhq3fWkMR1WyN7xUy430IOp0MABHbwF",
+      "domain": "cai.boleteriavip.com.ar",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "_ga",
+      "value": "GA1.1.863189385.1775076164",
+      "domain": ".boleteriavip.com.ar",
+      "path": "/",
+      "expires": 1809636164.458847,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "bolvipwebappauth",
+      "value": "CfDJ8A6oth3r6HVBmRwSauu-eZghNPPZoxGWMs3TPgH4GEbRMZz7NACztTI00jrRq4GzHroIqhFBJV-yg3zZzMvLVOhHFxiTttqrXXtXPlxN4GCG9XIsr4CaDtoJLkAoc_t2M-B2j3n6bjHgYhzCXpZ7Xn4nBHAkeA3k7FtU3sh2kaQtnLVQ_vaewAOtoTfgTJ5JQQUVdA9LYH3wvKci-AJMCfI365oU8so4oJeGV0dIkjaYJD4RotGeObEkeo6apZiZkEc4eI1R81qanSf_S5lovyaOWcNEgSPc5Q2OJAZ9fSN-bdzn2IOCKUVkgn7jcmSgd0sBECpfADWeiF0UJCxb4GtJfR8TLTWYUicxGyaEKqCkquXDN7khlnbS9vHXafWwHi0elZKfTIJ5FM1VIt9kCngrXM9Ihx0X0sBAVfHaEEe6HFEKh_Hwjpt2eAeyUoWuREpv9Wcn_pXS9E0eNaqpU8LiwHAt20MdmzHFr244FjhCt9Nvd-1len1iNf8sx6cyyaUSAPS8LKehGhABnm4pDaxS_sD-KSybg4H5KhZ7mmwZOUmEuML5qxQbqRpqxHoEyfsYSb3c-X-RSr1OXfjlTARo_gQ1dg74aE24irRvy1uFwTg4YOuN6gmAeqC0famTwQ",
+      "domain": "cai.boleteriavip.com.ar",
+      "path": "/",
+      "expires": 1777668173.117195,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "_ga_DB09PSTQ2F",
+      "value": "GS2.1.s1775076164$o1$g1$t1775076173$j51$l0$h0",
+      "domain": ".boleteriavip.com.ar",
+      "path": "/",
+      "expires": 1809636173.42091,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "_ga_ETT2R1CBNZ",
+      "value": "GS2.1.s1775076164$o1$g1$t1775076173$j51$l0$h0",
+      "domain": ".boleteriavip.com.ar",
+      "path": "/",
+      "expires": 1809636173.428486,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    }
+  ],
+  "eventUrl": "https://cai.boleteriavip.com.ar/event/description/1155/independiente-vs-racing"
+}

@@ -29,6 +29,8 @@ const UPDATE_RETRY_DELAY_MS = 10000
 let updateDownloadTimeout = null
 let updateBackgroundTimer = null
 
+process.env.APP_PACKAGED = app.isPackaged ? "true" : "false"
+
 if (app.isPackaged) {
   process.env.PLAYWRIGHT_BROWSERS_PATH = path.join(process.resourcesPath, "playwright-browsers")
 }

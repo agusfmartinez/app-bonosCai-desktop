@@ -3,7 +3,7 @@ try {
 } catch {}
 const fs = require("fs");
 const path = require("path");
-if (process.resourcesPath && !process.env.PLAYWRIGHT_BROWSERS_PATH) {
+if (process.env.APP_PACKAGED === "true" && !process.env.PLAYWRIGHT_BROWSERS_PATH) {
   process.env.PLAYWRIGHT_BROWSERS_PATH = path.join(process.resourcesPath, "playwright-browsers")
 }
 const { chromium } = require("playwright");
