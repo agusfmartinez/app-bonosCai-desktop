@@ -8,6 +8,7 @@ export default function Controls({
   onRunTest,
   onStop,
   showTestToggle = false,
+  showFinalizeToggle = true,
   finalizePurchase = true,
   onToggleFinalize,
 }) {
@@ -24,7 +25,7 @@ export default function Controls({
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          {showTestToggle && (
+          {showFinalizeToggle && (
             <label className="flex items-center gap-2 text-sm text-white">
               <span className="inline-flex items-center gap-2">
                 Finalizar compra

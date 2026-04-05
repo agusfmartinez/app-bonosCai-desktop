@@ -588,6 +588,7 @@ export default function App() {
           onRunTest={isDev ? () => handleRun(true) : undefined} // test only in dev
           onStop={handleStop}
           showTestToggle={isDev}
+          showFinalizeToggle
           finalizePurchase={finalizePurchase}
           onToggleFinalize={setFinalizePurchase}
         />
