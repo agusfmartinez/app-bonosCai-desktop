@@ -17,6 +17,28 @@ export function fetchWithAuth(path, options = {}) {
     ...(!hasAuthHeader && token ? { Authorization: `Bearer ${token}` } : {}),
     ...(sessionId ? { 'x-session-id': sessionId } : {}),
     ...(appVersion ? { 'x-app-version': appVersion } : {}),
+    'x-client': 'desktop',
   }
-  return fetch(`${API_URL}${path}`, { ...options, headers })
+  return fetch(`${API_URL}${path}`, { ...options, headers }).then(async (res) => {
+    if (res.status === 426 && typeof window !== 'undefined') {
+      let minVersion = null
+      try {
+        const cloned = res.clone()
+        const data = await cloned.json()
+        minVersion = data?.min_version || data?.minVersion || null
+      } catch {}
+      try {
+        const payload = {
+          forced: true,
+          min_version: minVersion || window.__APP_CONFIG__?.min_version || null,
+          ts: Date.now(),
+        }
+        localStorage.setItem('bp_force_update', JSON.stringify(payload))
+      } catch {}
+      try {
+        window.dispatchEvent(new CustomEvent('force-update'))
+      } catch {}
+    }
+    return res
+  })
 }

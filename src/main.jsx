@@ -340,6 +340,51 @@ function useAuthGate() {
 
 function Root() {
   const { ready, allowed, expired, forceUpdate } = useAuthGate();
+  const forceCheckRef = useRef(false)
+
+  useEffect(() => {
+    const handler = () => {
+      if (typeof localStorage !== 'undefined') {
+        try {
+          const saved = localStorage.getItem('bp_force_update')
+          const payload = saved ? JSON.parse(saved) : {}
+          const next = {
+            forced: true,
+            min_version: payload?.min_version || window.__APP_CONFIG__?.min_version || null,
+            ts: Date.now(),
+          }
+          localStorage.setItem('bp_force_update', JSON.stringify(next))
+        } catch {}
+      }
+      window.__FORCE_UPDATE__ = true
+    }
+    window.addEventListener('force-update', handler)
+    return () => window.removeEventListener('force-update', handler)
+  }, [])
+
+  useEffect(() => {
+    const checkStoredForceUpdate = async () => {
+      if (forceCheckRef.current) return
+      forceCheckRef.current = true
+      try {
+        const raw = localStorage.getItem('bp_force_update')
+        if (!raw) return
+        const parsed = JSON.parse(raw)
+        if (!parsed?.forced || !parsed?.min_version) return
+        const info = await window.api?.getAppInfo?.()
+        const current = info?.appVersion
+        if (current && !isOutdated(current, parsed.min_version)) {
+          localStorage.removeItem('bp_force_update')
+          window.__FORCE_UPDATE__ = false
+        } else {
+          window.__FORCE_UPDATE__ = true
+        }
+      } catch {
+        // ignore
+      }
+    }
+    checkStoredForceUpdate()
+  }, [])
 
   useEffect(() => {
     if (!window.api?.onUpdaterLog) return
@@ -353,9 +398,17 @@ function Root() {
     }
   }, [])
 
+  let forced = forceUpdate || window.__FORCE_UPDATE__ || localStorage.getItem('bp_force_update') === '1'
+  try {
+    const raw = localStorage.getItem('bp_force_update')
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      forced = forced || parsed?.forced === true
+    }
+  } catch {}
   if (!ready) return <Loading />;
   if (expired) return <SessionExpired />;
-  if (forceUpdate) return <ForceUpdate />;
+  if (forced) return <ForceUpdate />;
 
   return (
     <Routes>
