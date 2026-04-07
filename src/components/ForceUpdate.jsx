@@ -1,7 +1,7 @@
 import { useUpdater } from "../context/UpdateContext";
 
 export default function ForceUpdate() {
-  const { checkForUpdates, forceCheck } = useUpdater();
+  const { forceCheck } = useUpdater();
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-red-800 via-red-900 to-red-950 text-white">
@@ -17,7 +17,7 @@ export default function ForceUpdate() {
           <button
             type="button"
             className="mt-6 inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/20"
-            onClick={() => (forceCheck || checkForUpdates)?.()}
+            onClick={() => forceCheck && forceCheck()}
           >
             Actualizar ahora
           </button>

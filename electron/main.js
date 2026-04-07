@@ -221,7 +221,7 @@ function safeCheckForUpdates() {
 }
 
 function initAutoUpdate() {
-  autoUpdater.autoDownload = true;
+  autoUpdater.autoDownload = false;
   autoUpdater.autoInstallOnAppQuit = true;
 
   const sendUpdateEvent = (payload) => {
@@ -366,6 +366,7 @@ ipcMain.handle("updater:subscribe", async () => {
 
 ipcMain.handle("update:check", async () => {
   try {
+    autoUpdater.autoDownload = false
     safeCheckForUpdates()
     return { ok: true }
   } catch (err) {
@@ -398,9 +399,21 @@ ipcMain.handle("update:install", async () => {
 ipcMain.handle("update:force-check", async () => {
   try {
     updateRetryCount = 0
+    autoUpdater.autoDownload = true
     return await autoUpdater.checkForUpdates()
   } catch (err) {
     logMain("error", `AutoUpdater force check failed: ${err?.message || err}`)
+    return { ok: false, error: String(err?.message || err) }
+  }
+})
+
+ipcMain.handle("update:download", async () => {
+  try {
+    autoUpdater.autoDownload = true
+    await autoUpdater.downloadUpdate()
+    return { ok: true }
+  } catch (err) {
+    logMain("error", `AutoUpdater download failed: ${err?.message || err}`)
     return { ok: false, error: String(err?.message || err) }
   }
 })

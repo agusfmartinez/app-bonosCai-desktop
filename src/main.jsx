@@ -145,11 +145,12 @@ function useAuthGate() {
         const minVersion = config?.min_version
         if (config?.force_update === true) {
           setForceUpdate(true)
+          try { await window.updater?.forceCheck?.() } catch {}
           return true
         }
         if (currentVersion && minVersion && isOutdated(currentVersion, minVersion)) {
           setForceUpdate(true)
-          try { await window.api.forceUpdate?.() } catch {}
+          try { await window.updater?.forceCheck?.() } catch {}
           return true
         }
       } catch (e) {
@@ -179,11 +180,12 @@ function useAuthGate() {
             const minVersion = parsed?.min_version
             if (parsed?.force_update === true) {
               setForceUpdate(true)
+              try { await window.updater?.forceCheck?.() } catch {}
               return true
             }
             if (currentVersion && minVersion && isOutdated(currentVersion, minVersion)) {
               setForceUpdate(true)
-              try { await window.api.forceUpdate?.() } catch {}
+              try { await window.updater?.forceCheck?.() } catch {}
               return true
             }
           } catch (err) {

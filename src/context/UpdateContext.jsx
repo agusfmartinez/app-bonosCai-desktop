@@ -67,6 +67,7 @@ export const UpdateProvider = ({ children }) => {
       error,
       checkForUpdates: window.updater?.checkForUpdates,
       forceCheck: window.updater?.forceCheck,
+      downloadUpdate: window.updater?.downloadUpdate,
       installUpdate: window.updater?.installUpdate,
     }),
     [status, progress, error]
@@ -84,6 +85,7 @@ export const useUpdater = () => {
       error: null,
       checkForUpdates: () => {},
       forceCheck: () => {},
+      downloadUpdate: () => {},
       installUpdate: () => {},
     };
   }

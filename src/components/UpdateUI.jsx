@@ -1,7 +1,7 @@
 import { useUpdater } from "../context/UpdateContext";
 
 export default function UpdateUI() {
-  const { status, progress, error, installUpdate, checkForUpdates } = useUpdater();
+  const { status, progress, error, installUpdate, checkForUpdates, downloadUpdate } = useUpdater();
 
   if (status === "idle") return null;
 
@@ -9,7 +9,17 @@ export default function UpdateUI() {
     <div className="fixed bottom-6 right-6 z-50 w-[320px] rounded-2xl border border-white/10 bg-red-950/95 px-4 py-3 text-sm text-white shadow-xl">
       {status === "checking" && <p>🔍 Buscando actualizaciones…</p>}
 
-      {status === "available" && <p>⬇️ Nueva versión disponible…</p>}
+      {status === "available" && (
+        <div className="space-y-2">
+          <p>⬇️ Nueva versión disponible</p>
+          <button
+            className="w-full rounded-lg bg-white/10 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-white hover:bg-white/20"
+            onClick={() => downloadUpdate && downloadUpdate()}
+          >
+            Descargar actualización
+          </button>
+        </div>
+      )}
 
       {status === "downloading" && (
         <div className="space-y-2">

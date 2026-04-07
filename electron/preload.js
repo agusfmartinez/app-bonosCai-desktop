@@ -56,5 +56,6 @@ contextBridge.exposeInMainWorld('updater', {
   checkForUpdates: () => ipcRenderer.invoke('update:check'),
   forceCheck: () => ipcRenderer.invoke('update:force-check'),
   setChannel: (channel) => ipcRenderer.invoke('update:set-channel', channel),
+  downloadUpdate: () => ipcRenderer.invoke('update:download'),
   installUpdate: () => ipcRenderer.invoke('update:install'),
 })
