@@ -28,6 +28,8 @@ const UPDATE_MIN_INTERVAL_MS = 5000
 const UPDATE_RETRY_DELAY_MS = 10000
 let updateDownloadTimeout = null
 let updateBackgroundTimer = null
+let updateSuppressedUntil = 0
+const UPDATE_SUPPRESS_MS = 1000 * 60 * 30
 
 process.env.APP_PACKAGED = app.isPackaged ? "true" : "false"
 
@@ -211,8 +213,9 @@ function validateRunConfig(cfg) {
   return { ok: true }
 }
 
-function safeCheckForUpdates() {
+function safeCheckForUpdates({ force = false } = {}) {
   const now = Date.now()
+  if (!force && updateSuppressedUntil && now < updateSuppressedUntil) return
   if (now - updateLastCheck < UPDATE_MIN_INTERVAL_MS) return
   updateLastCheck = now
   autoUpdater.checkForUpdates().catch((err) => {
@@ -283,6 +286,7 @@ function initAutoUpdate() {
         safeCheckForUpdates()
       }, retryIn)
     } else {
+      updateSuppressedUntil = Date.now() + UPDATE_SUPPRESS_MS
       emitUpdaterLog("warn", "Max retries alcanzado")
     }
   })
@@ -399,6 +403,7 @@ ipcMain.handle("update:install", async () => {
 ipcMain.handle("update:force-check", async () => {
   try {
     updateRetryCount = 0
+    updateSuppressedUntil = 0
     autoUpdater.autoDownload = true
     return await autoUpdater.checkForUpdates()
   } catch (err) {
