@@ -30,6 +30,7 @@ let updateDownloadTimeout = null
 let updateBackgroundTimer = null
 let updateSuppressedUntil = 0
 const UPDATE_SUPPRESS_MS = 1000 * 60 * 30
+let currentUpdateChannel = null
 
 process.env.APP_PACKAGED = app.isPackaged ? "true" : "false"
 
@@ -214,10 +215,13 @@ function validateRunConfig(cfg) {
 }
 
 function safeCheckForUpdates({ force = false } = {}) {
+  if (!currentUpdateChannel) return
   const now = Date.now()
   if (!force && updateSuppressedUntil && now < updateSuppressedUntil) return
   if (now - updateLastCheck < UPDATE_MIN_INTERVAL_MS) return
   updateLastCheck = now
+  autoUpdater.channel = currentUpdateChannel
+  autoUpdater.allowPrerelease = currentUpdateChannel === 'beta'
   autoUpdater.checkForUpdates().catch((err) => {
     logMain("error", `checkForUpdates failed: ${err?.message || err}`)
   })
@@ -324,8 +328,10 @@ function initAutoUpdate() {
 
 function setUpdateChannel(channel) {
   const normalized = channel === 'beta' ? 'beta' : 'latest'
+  currentUpdateChannel = normalized
   autoUpdater.channel = normalized
   autoUpdater.allowDowngrade = false
+  autoUpdater.allowPrerelease = normalized === 'beta'
   return normalized
 }
 
