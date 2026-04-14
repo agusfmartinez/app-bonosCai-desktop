@@ -74,7 +74,7 @@ export default function App() {
 
   const navigate = useNavigate();
 
-  const { status, error } = useRunnerStatus()
+  const { status, error, manualReady } = useRunnerStatus()
   const { checkForUpdates } = useUpdater()
   const isRunning = status === 'running' || status === 'stopping' || status === 'paused'
   const isDev = import.meta.env.DEV
@@ -84,6 +84,7 @@ export default function App() {
   const lastStatusRef = useRef(null)
   const stopRequestedRef = useRef(false)
   const lastLogRef = useRef({ key: null, ts: 0 })
+  const manualPendingRef = useRef(false)
 
   const persistRunId = (runId, clientRunId) => {
     if (runId) localStorage.setItem(RUN_ID_STORAGE_KEY, runId)
@@ -200,6 +201,19 @@ export default function App() {
     }
     if (lastStatusRef.current === status) return
 
+    if (manualReady && !manualPendingRef.current && activeRunIdRef.current) {
+      const runId = activeRunIdRef.current
+      const clientRunId = clientRunIdRef.current
+      manualPendingRef.current = true
+      activeRunIdRef.current = null
+      clientRunIdRef.current = null
+      finishRun(runId, 'manual_pending', 'Pendiente de confirmación manual', clientRunId)
+      clearPersistedRun()
+      stopRequestedRef.current = false
+      lastStatusRef.current = status
+      return
+    }
+
     if (status === 'done' || status === 'error') {
       const runId = activeRunIdRef.current
       const clientRunId = clientRunIdRef.current
@@ -221,7 +235,7 @@ export default function App() {
     }
 
     lastStatusRef.current = status
-  }, [status, error])
+  }, [status, error, manualReady])
 
   // SSE 
   useEffect(() => {

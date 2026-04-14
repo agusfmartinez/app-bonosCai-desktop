@@ -116,6 +116,9 @@ process.on('message', async (msg) => {
       await runAutomation({
         ...msg.payload,
         page,
+        onManualReady: async () => {
+          process.send({ type: 'manual-ready' })
+        },
         onPause: async () => {
           process.send({ type: 'paused' })
           while (!stopFlag) {

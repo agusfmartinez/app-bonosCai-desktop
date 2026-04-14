@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 export function useRunnerStatus(pollMs = 500) {
   const [status, setStatus] = useState('idle')
   const [error, setError] = useState(null)
+  const [manualReady, setManualReady] = useState(false)
 
   useEffect(() => {
     let mounted = true
@@ -13,6 +14,7 @@ export function useRunnerStatus(pollMs = 500) {
         if (!mounted) return
         setStatus(res.status)
         setError(res.error)
+        setManualReady(!!res.manualReady)
       } catch (e) {
         if (!mounted) return
         setStatus('error')
@@ -29,5 +31,5 @@ export function useRunnerStatus(pollMs = 500) {
     }
   }, [pollMs])
 
-  return { status, error }
+  return { status, error, manualReady }
 }

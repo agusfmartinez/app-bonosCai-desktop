@@ -72,6 +72,11 @@ class RunnerManager {
         this.emitLog({ level: 'warning', message: 'Automatización pausada. Esperando acción del usuario.' })
       }
 
+      if (msg.type === 'manual-ready') {
+        this.state.setManualReady(true)
+        this.emitLog({ level: 'info', message: 'Pendiente de confirmación manual.' })
+      }
+
       if (msg.type === 'login-result') {
         finish(msg.payload)
       }

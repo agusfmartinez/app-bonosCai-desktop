@@ -2,17 +2,26 @@ class RunnerState {
   constructor() {
     this.status = 'idle' // idle | running | stopping | paused | error | done
     this.error = null
+    this.manualReady = false
   }
 
   set(status, error = null) {
     this.status = status
     this.error = error
+    if (status !== 'paused') {
+      this.manualReady = false
+    }
+  }
+
+  setManualReady(value) {
+    this.manualReady = value
   }
 
   get() {
     return {
       status: this.status,
       error: this.error,
+      manualReady: this.manualReady,
     }
   }
 

@@ -499,8 +499,13 @@ async function runAutomation({
   // Continuar a pagina confirmacion
   await expectEnabledAndClick(page, "#buyButton", pushLog, true, 60000);
 
-    if (!finalizePurchase) {
+  if (!finalizePurchase) {
     pushLog("⏸️ Se detiene antes de finalizar compra.");
+    if (typeof onManualReady === 'function') {
+      try {
+        await onManualReady()
+      } catch {}
+    }
     if (onPause) {
       await onPause()
     }
