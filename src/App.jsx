@@ -103,6 +103,19 @@ export default function App() {
     localStorage.removeItem(RUN_STOP_STORAGE_KEY)
   }
 
+  const resolveStopOutcome = (runnerStatus, runnerError, wasStopped, finalizeEnabled) => {
+    if (runnerStatus === 'error') {
+      return { status: 'error', message: runnerError || 'Error en ejecucion' }
+    }
+    if (wasStopped) {
+      if (finalizeEnabled === false) {
+        return { status: 'manual_pending', message: 'Pendiente de confirmacion manual' }
+      }
+      return { status: 'error', message: 'Cancelado por usuario' }
+    }
+    return { status: 'success', message: null }
+  }
+
   // Carga inicial
   useEffect(() => {
     let cancelled = false;
@@ -182,17 +195,11 @@ export default function App() {
 
     if (status === 'done' || status === 'error' || status === 'idle') {
       const stopped = localStorage.getItem(RUN_STOP_STORAGE_KEY) === '1'
-      const finalStatus = status === 'error' || stopped ? 'error' : 'success'
-      const message =
-        status === 'error'
-          ? error || 'Error en ejecución'
-          : stopped
-            ? 'Cancelado por usuario'
-            : null
+      const { status: finalStatus, message } = resolveStopOutcome(status, error, stopped, finalizePurchase)
       finishRun(storedRunId, finalStatus, message, storedClientRunId)
       clearPersistedRun()
     }
-  }, [status, error])
+  }, [status, error, finalizePurchase])
 
   useEffect(() => {
     if (!activeRunIdRef.current) {
@@ -221,13 +228,7 @@ export default function App() {
       clientRunIdRef.current = null
 
       const wasStopped = stopRequestedRef.current
-      const finalStatus = status === 'error' || wasStopped ? 'error' : 'success'
-      const message =
-        status === 'error'
-          ? error || 'Error en ejecución'
-          : wasStopped
-            ? 'Cancelado por usuario'
-            : null
+      const { status: finalStatus, message } = resolveStopOutcome(status, error, wasStopped, finalizePurchase)
 
       finishRun(runId, finalStatus, message, clientRunId)
       clearPersistedRun()
@@ -235,7 +236,7 @@ export default function App() {
     }
 
     lastStatusRef.current = status
-  }, [status, error, manualReady])
+  }, [status, error, manualReady, finalizePurchase])
 
   // SSE 
   useEffect(() => {
@@ -612,6 +613,8 @@ export default function App() {
     </div>
   );
 }
+
+
 
 
 
